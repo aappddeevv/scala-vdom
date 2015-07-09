@@ -24,9 +24,15 @@ together in some cases. The general rule is to avoid adjacent text nodes in your
 * No support is provided for callbacks.
 * There is no convenient virtual script-like interface. In the future, scalatag's will be adapted
 to produce virtual nodes.
-* It seems that PatchAction, Patch and ElementAction all seem to be the same thing. This is insane.
-These classes need to be more cleverly refactored. The key abstraction still seems to be elusive.
-Perhaps a free monad needs to be used.
+* While all backend specific code is isolated into a "Backend" object, the use of ElementAction
+seems duplicative. These classes need to be more cleverly refactored.
+* The presence of the correct ExceutionContext still needs to be traced and worked out so that
+it can always be specified by the programmer.
+* Should diff'ing and rendering have future return values to allow them to be async by default?
+Not sure this makes sense in every backend environment. Can't the programmer just wrap it into
+a future themselves if they want it async? There *are* side effects for rendering, potentially,
+but probably not diff'ing.
+
 
 ## Setting Attributes & Properties
 
@@ -49,23 +55,26 @@ instead of `setAttribute` for some attributes to improve cross-browser compatibi
 Assume that `test7` is an id in your DOM where you want the toy example to render into:
 
 ```scala
-    val target7 = document.getElementById("test7")
+    //
+    // Expanding box
+    //
+     val target7 = document.getElementById("test7")
 
-    def render(count: Int) = VNode("div", Some("box"),
+    def box(count: Int) = VNode("div", Some("box"),
       Seq(textAlign := "center", lineHeight := s"${100 + count}px",
         border := "1px solid red", width := s"${100 + count}px", height := s"${100 + count}px"),
       VNode(count.toString))
 
     var count = 0
-    var tree = render(count)
-    var rootNode = tree(DefaultContext)
-    rootNode.foreach(target7.appendChild(_))
+    var tree = box(count)
+    var rootNode = DOMBackend.render(tree)
+    rootNode.foreach(target7.appendChild(_)) // manual append
 
     val cancel = setInterval(1000) {
       count += 1
-      val newTree = render(count)
+      val newTree = box(count)
       val patch = diff(tree, newTree)
-      rootNode.flatMap { n => patch(n).run(DefaultContext) }
+      rootNode.flatMap { n => DOMBackend.run(patch(n)) }
       tree = newTree
     }
     setTimeout(10 seconds)(clearInterval(cancel))

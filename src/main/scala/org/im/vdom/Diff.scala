@@ -18,8 +18,6 @@ package vdom
 
 trait DiffModule {
 
-  import PatchModule._
-
   /**
    * Diff two VNode's and return a patch that makes original look like target.
    *
@@ -50,7 +48,7 @@ trait DiffModule {
   implicit def seqPatchToPatch(seq: Seq[Patch]): Patch = seq.fold(EmptyPatch)((p, n) => p andThen n)
 
   /**
-   * Enable explicit `.toPatch` notation on a sequence of patches. 
+   * Enable explicit `.toPatch` notation on a sequence of patches.
    */
   implicit class ToPatch(seq: Seq[Patch]) {
     def toPatch = seqPatchToPatch(seq)

@@ -22,7 +22,6 @@ import scala.scalajs.js
 import collection.mutable
 
 import DiffModule._
-import PatchModule._
 
 /**
  * An object that can be diff'd to produce a patch that takes this object into that.
@@ -41,14 +40,6 @@ trait Diffable { self =>
   def diff(that: That): Patch
 }
 
-/**
- * A typeclass for an object that can be rendered.
- *
- * @param O the rendering output
- */
-trait Renderable[O] {
-  def render: UndefOr[O]
-}
 
 /** A type that can provide a key. */
 trait Keyable {
@@ -59,15 +50,13 @@ trait Keyable {
 /**
  * Virtual node can be rendered, diffed and keyed.
  */
-sealed trait VNode extends Diffable with Renderable[dom.Node] with Keyable
+sealed trait VNode extends Diffable with Keyable
 
 /**
  * Node composed of text content.
  */
 case class VirtualText(text: String) extends VNode {
   type That = VirtualText
-
-  def render = dom.document.createTextNode(text)
 
   def diff(that: VirtualText): Patch = {
     val r =
@@ -141,18 +130,6 @@ case class VirtualElementNode(val tag: String,
 
   type That = VirtualElementNode
 
-  def render = {
-    val newNode: UndefOr[dom.Element] = dom.document.createElement(tag)
-    newNode.foreach { newNode =>
-      // apply the properties
-      attributes.foreach(_(newNode))
-
-      // recurse and create the children, append to the new node!
-      children.foreach(childVNode => childVNode.render.foreach(newNode.appendChild(_)))
-    }
-    newNode
-  }
-
   /**
    * Diff properties then children and compose the resulting patches.
    */
@@ -173,7 +150,6 @@ case class VirtualElementNode(val tag: String,
 /** An empty node that renders into undefined. */
 case class EmptyNode() extends VNode {
   type That = EmptyNode
-  def render = js.undefined
   def diff(that: EmptyNode) = EmptyPatch
 }
 

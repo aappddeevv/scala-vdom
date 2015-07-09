@@ -17,19 +17,21 @@ package org.im
 package vdom
 
 import scala.concurrent.duration._
+import scala.concurrent.Await
 import scala.scalajs.js.JSApp
 import scala.scalajs.js.timers._
-
+import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import org.scalajs.dom
 import org.scalajs.dom.document
+import org.im.vdom.backend.DOMBackend
 
 object Test extends JSApp {
 
   import org.im.vdom._
-  import PatchModule._
   import DiffModule._
   import HTML5Attributes._
   import Style._
+  import DOMBackend._ // brings in alot of implicits
 
   val bs = scala.collection.mutable.BitSet()
   bs += 10
@@ -41,82 +43,83 @@ object Test extends JSApp {
     val p1 = TextPatch("test1 succeeded: add text to existing element by replacing text")
     val target = document.getElementById("test1")
     require(target != null)
-    p1(target).run
+    DOMBackend.run(p1(target))
 
     val p1_5 = TextPatch("test1.5 succeeded: add text to existing text element adding it directly")
     val target1_5 = document.getElementById("test1_5")
     require(target1_5 != null)
-    p1_5(target1_5).run
+    DOMBackend.run(p1_5(target1_5))
 
     val target2 = document.getElementById("test2")
     require(target2 != null)
     val p2 = InsertPatch(VNode("p", VNode("test2 succeeded: insert a new child")))
-    p2(target2).run
+    DOMBackend.run(p2(target2))
 
     val target3 = document.getElementById("test3")
     val p3 = ReplacePatch(VNode("div", VNode("p", VNode("test3 succeeded: replace a child"))))
-    p3(target3).run
+    DOMBackend.run(p3(target3))
 
     val target4 = document.getElementById("test4")
     val p4 = InsertPatch(VNode("div", Seq(cls := Some("surroundme2")),
-      VNode("p", VNode("line 1"), VNode("line2"))))
-    p4(target4).run
+      VNode("div", VNode("p", VNode("line 1")), VNode("p", VNode("line2")))))
+    DOMBackend.run(p4(target4))
 
     val target5 = document.getElementById("test5")
     val vdom5_a = VNode("div", Seq(cls := Some("surroundme2")),
-      VNode("p", Seq(), VNode("test 5 word 1"), VNode("test 5 word 2")))
+      VNode("p", Seq(), VNode("test 5 word 1 - original"), VNode("test 5 word 2 - original")))
     val vdom5_b = VNode("div", Seq(cls := Some("surroundme2")),
-      VNode("p", Seq(), VNode("success! test 5 new word 1"), VNode("success! test 5 new word 2")))
+      VNode("p", VNode("success! test 5 new line 1")), VNode("p", VNode("success! test 5 new line 2")))
 
     val patch5 = diff(VNode.empty, vdom5_a)
-    val new5 = patch5(target5).run
-    val patch5_1 = diff(vdom5_a, vdom5_b)
-    patch5_1(new5.asInstanceOf[dom.Element]).run
+    DOMBackend.run(patch5(target5)).foreach { n =>
+      val patch5_1 = diff(vdom5_a, vdom5_b)
+      DOMBackend.run(patch5_1(n))
+    }
 
     // Test patching via a one level path
     val target5aa = document.getElementById("test5a")
     val vdom5aa = VNode("div", Seq(cls := Some("surroundme")), VNode("testa success on path!"))
     val patch5aa = PathPatch(InsertPatch(vdom5aa), Nil)
-    patch5aa(target5aa).run
+    DOMBackend.run(patch5aa(target5aa))
 
     val target5ab = document.getElementById("test5b_parent")
     val vdom5ab = VNode("div", Seq(cls := Some("surroundme")), VNode("test5b success on path!"))
-    val patch5ab = RemovePatch().applyTo(Seq(0)) >> PathPatch(InsertPatch(vdom5ab), Seq(0))
-    patch5ab(target5ab).run
+    val patch5ab = RemovePatch().applyTo(Seq(0)) andThen PathPatch(InsertPatch(vdom5ab))
+    DOMBackend.run(patch5ab(target5ab))
 
     val target6 = document.getElementById("test6")
     val vdom6a = VNode("div", "key1", Seq(id := "willbedropped", cls := "surroundme"),
-      VNode("div", VNode("test 6 word1")),
-      VNode("div", VNode("test 6 word2")))
+      VNode("p", VNode("test 6 line 1")),
+      VNode("p", VNode("test 6 line 2")))
     val vdom6b = VNode("div", "key1", Seq(cls := Some("surroundme2")),
-      VNode("span", VNode("success! test 6 word1")),
-      VNode("span", VNode(" - ")),
-      VNode("span", VNode("success! test 6 word2")))
+      VNode("p", VNode("success! test 6 line 1")),
+      VNode("span", VNode("***")),
+      VNode("p", VNode("success! test 6 line 2")))
 
-    val new6 = ReplacePatch(vdom6a)(target6).run
-    val patch6b = diff(vdom6a, vdom6b)
-    new6.foreach(n => patch6b(n.asInstanceOf[dom.Element]).run)
+    val new6 = DOMBackend.run(ReplacePatch(vdom6a)(target6))
+    val patch6b = diff(vdom6a, vdom6b)    
+    new6.foreach(n => DOMBackend.run(patch6b(n)))
 
     //
     // Expanding box
     //
     val target7 = document.getElementById("test7")
 
-    def render(count: Int) = VNode("div", Some("box"),
+    def box(count: Int) = VNode("div", Some("box"),
       Seq(textAlign := "center", lineHeight := s"${100 + count}px",
         border := "1px solid red", width := s"${100 + count}px", height := s"${100 + count}px"),
       VNode(count.toString))
 
     var count = 0
-    var tree = render(count)
-    var rootNode = tree.render
-    rootNode.foreach(target7.appendChild(_))
+    var tree = box(count)
+    var rootNode = DOMBackend.render(tree)
+    rootNode.foreach(target7.appendChild(_)) // manual append
 
     val cancel = setInterval(1000) {
       count += 1
-      val newTree = render(count)
+      val newTree = box(count)
       val patch = diff(tree, newTree)
-      rootNode.flatMap { n => patch(n).run }
+      rootNode.flatMap { n => DOMBackend.run(patch(n)) }
       tree = newTree
     }
     setTimeout(10 seconds)(clearInterval(cancel))
