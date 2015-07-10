@@ -31,6 +31,14 @@ import scala.util.control.NonFatal
  * (the source) object. The "difference" information must
  * be interpreted for each backend environment that the patch 
  * is targeting.
+ * 
+ * You can create patches either from diffing two virtual dom
+ * trees or you can just manually create the patches and compose
+ * them using a sequence or `andThen` essentially creating a
+ * patch stream or template language of DOM "updates."
+ * 
+ * It is quite passible that another layer of abstraction creates
+ * patches directly as an intermediate "language."
  */
 sealed trait Patch {
   /**

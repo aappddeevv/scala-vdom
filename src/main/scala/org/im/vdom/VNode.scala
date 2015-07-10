@@ -183,5 +183,11 @@ object VNode {
    * An empty VNode.
    */
   val empty = EmptyNode()
+  
+  /**
+   * Alias for creating a text node.
+   */
+  def text(content: String) = VirtualText(content)
+  
 }
 

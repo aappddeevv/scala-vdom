@@ -33,7 +33,9 @@ package object vdom {
   /**
    * An action to be applied to elements. The programmer task is to create
    * action objects that have enough "configuration" data to properly execute
-   * a side-effect function on a DOM Element.
+   * a side-effect function on a DOM Element. Attributes and properties
+   * are handled this way because of the complexity of information needed
+   * to set them correctly.
    */
   trait ElementAction extends Performer[dom.Element] {
     def key: AttributeKey
