@@ -3,66 +3,61 @@
 scala-vdom is a simple virtual DOM written entirely in scala. It is based heavily on virtual-dom
  and other virtual DOM implementations.
 
-This library is currently a proof of concept. See [Issues]
+This library is currently a proof of concept. See [Issues](#issues).
 
-The library is initially targeted for the client using scala.js, it will also target the server side
-perhaps with phantomjs or some otherclever rendering approach.
-
-This virtual DOM implementation supports:
+This virtual DOM implementation is designed to support:
 
 * HTML5
+* Client and server side
+* Asynchronous processing, where possible.
+* Browser API standardization
 
-The virtual DOM may work across browser vendors although quirks in those browse may cause problems.
 
-Note that the implementation approach allows you to use scala-vdom in multiple ways. For example,
-you can use it as a traditional virtual dom with diffing the full tree or you can use it to 
-stream a set of patches to a node for application (using patches and IOActions) and hence skip the entire vdom diffing process altogether.
+The implementation approach allows you to use scala-vdom in multiple ways. For example,
+you can use it as a traditional virtual dom with diffing the full tree or you can use our own library to create patches and 
+stream them to a node (using IOActions).
 
-scala-vdom is designed to have multiple, replacable layers:
+scala-vdom is designed to have multiple, replaceable layers:
 
 * VDom: The virtual DOM layer that creates "nodes" that are eventually rendered into a
-Backend specific UI widget set, such as the DOM.
+Backend specific UI widget set, such as the browser DOM.
 * Patch: A recipe that describes how to change one VDom into another VDom. The recipe
 sometimes uses a VDom instance to conveniently collect together the arguments for
-describing that change, but it is not conceptually dependent on the VDom layer.
-* IOAction: A monad that exuecutes side effects. Apply a Patch to a Backend specific
-object is considered a side-effect. However, this layer is completely generally
-and can be used  for a variety of compositional design patterns.
-a Backend specific environment.
+describing the change but it is conceptually independent on the VDom layer.
+* IOAction: A monad that exuecutes side effects. Applying a Patch to a Backend specific
+object is considered a side-effect.
 * Backend: A UI environment specific object that knows how to render a VNode, take
-a patch and create a side-effecting action specific to a UI environment and how to
-run an IOAction.
+a patch and create a side-effecting action specific to a UI environment. It also
+knows how to run an IOAction.
 
 The layers have been created to allow scala-vdom to execute efficienly in multiple 
 environments. scala-vdom was designed to run on clients and servers in both scalajs
 and non-scalajs environments. Most of the core layers create immutable objects that
 are Backend independent or at least highly decoupled from a Backend.
 
-## VDom
-Virtual DOM trees are built using the VDom classes. VDom objects are immutable. Use of 
-VDom is entirely option as you could generate the patches directly yourself.
+## VNode
+Virtual DOM trees are built using the VNode classes. VNode objects are immutable. Use of 
+VNode is entirely optional. You could generate the patches directly yourself.
 
-VDom trees can be created in multiple ways:
+VNode trees can be created in multiple ways:
 
-* Creating the VDom tree using a function you define. The function may use
+* Creating the VNode tree using a function you define. The function may use
 application specific logic to customize the VDom tree to reflect changes in application state.
-* Creating a singe VDom tree then using a lens (shapeless, scalaz, monacle) to mutate
+* Creating a singe VNode tree then using a lens (shapeless, scalaz, monacle) to mutate
 the tree.
 * Using a more friendly API such as scalatags. Scalatags needs to configured to
 generate VDom objects instead of text or DOM objects.
+* Use a ThinkNode (a VNode subclass) which allows you to generate VNodes from within
+the tree rather than external to it.
 
-The VDom class hierarchy is sealed. If you wish to write your own VDom type
-so that you can add it to a tree, use `ThunkNode` and provide a function that
-produces a Patch when diff is called. If you just want to produce a general Patch,
-write a scala function to create a Patch. ThunkNode allows you to add that 
-function as a child into a VitualElementNode.
+The VNode class hierarchy is sealed and cannot be extended.
 
 ## Patching
 Patching is the process of updating a DOM node. The updates can be calculated a number
 of different ways depending on your application.
 
 * Through the `diff(original, target)` method. The diff method applies an 
-external algorithm to create a Patch. The external algorithm also narrows down
+external algorithm to create a Patch. The algorithm narrows down
 the patch creation process so that a VNode's `diff` method is called on objects
 that are of the same type. Each VNode knows how to `diff` with an object like itself
 much in the same way that it can determine if it is equal to another object of the same
@@ -70,14 +65,13 @@ type.
 * By creating the patches directly yourself based on your knowledge of which updates are
 needed.
 * By creating the patches directly yourself and sending them from the server to the client
-where they are interpreted and applied to the DOM.
+where they are interpreted and applied to the DOM. You could for example, use uPickle.
 * Skip the VNode interface completely, and generate your own patches based on your own
 virtual node concept.
 * Using a scala lens (such as those in shapeless, scalaz or monacle) to change a single
-element in a VDom tree and then running caling `diff`.
-* Receiving a patch then using the IOAction combinators to continue to build your
-own DOM mutations directly on the returned DOM elements. This approach is not recommended
-of course. 
+element in a VDom tree and then calling `diff`.
+* Receiving a patch then using the IOAction combinators to continue to author your
+own DOM mutation function calls directly on the DOM elements contained in the IOAction monad. This approach is not recommended of course. 
 
 ## Diffing
 Diffing occurs at two levels.
@@ -91,13 +85,19 @@ if the VNodes are the same type. Each VNode knows how to diff with an object of 
 same class but not with objets of another VNode class. This allows the diff logic to
 be concentrated in the VNode class.
 
-You can control the 
-
 The diff algorithm tries to find the smallest and/or most efficient set of Patches
 to mutate the original VDom into the target VDome.
 
-Currently, there are no optimizations an the entire tree is re-created :-) Once teh basic
-design of the library is fleshed out, I'll optimize the diff process.
+Currently, there are no optimizations. The entire tree is re-created :-) Ouch!
+
+Below are my notes for looking into diffing optimizations:
+
+* Use of the key.
+* Use of fancy tree changes searching algorithms.
+* Use of of explicit "no changes here" tags in VNode.
+* Use of ThunkVNode.
+* Lenses (you can use these now for VNode mutation) that point out where changes "might" occur. In other words, given a big tree, "here's" the places in the big tree to look for
+changes.
 
 ## Issues
 There are many issues that currently make this library unusable for production use. These 
@@ -171,11 +171,9 @@ Assume that `test7` is an id in your DOM where you want the toy example to rende
 ## Virtual DOM implementations
 Here's a list of virtual dom implementations that I looked at:
 
-* react: Facebook's well known version
-* diffDom: js
-* virtual-dom: js
-* incremental-dom: js, essentially reproduces a XAML-ish type environment. From google.
-* dom-layer: js
-* ember / glimmer: js, have not looked at this quite yet
-
-There are a few more of course and I'll add the links when I update the documentation next.
+* [react](https://facebook.github.io/react/): Facebook's well known version
+* [diffDom](https://github.com/fiduswriter/diffDOM): js
+* [virtual-dom](https://github.com/Matt-Esch/virtual-dom): js
+* [incremental-dom](https://github.com/google/incremental-dom): js, essentially reproduces a XAML-ish type environment. From google.
+* [dom-layer](https://www.npmjs.com/package/dom-layer): js
+* [ember / glimmer](https://github.com/emberjs/ember.js/pull/10501): js, have not looked at this quite yet

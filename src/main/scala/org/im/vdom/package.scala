@@ -22,10 +22,6 @@ import scala.annotation.implicitNotFound
 import collection.immutable.BitSet
 import scalajs.js.UndefOr
 
-/**
- * TODO: Decouple the DOM implementation part from the expression of
- * the attributes and push the implementation part into the `Backend`.
- */
 package object vdom {
 
   /**
@@ -109,24 +105,6 @@ package object vdom {
   class RichStyleKey(name: String) {
     def style = StyleKey(name)
   }
-
-  //
-  //  /** Name and value pair. Use this to perform the side effect on a DOM Element. */
-  //  case class AttrAction[T](val key: Key, val value: Option[T]) extends ElementAction {
-  //    def apply(el: dom.Element): Unit = {
-  //      //println(s"applied AttrAction: $key, $value")
-  //      value.fold(el.removeAttribute(key.name)) { v =>
-  //        //println(s"applying: ${key.name} -> ${value} to $el")
-  //        if (!(key.hints.values & MustUseAttribute).isEmpty)
-  //          el.setAttribute(key.name, v.toString)
-  //        else
-  //          el.asInstanceOf[js.Dynamic].updateDynamic(key.name)(v.asInstanceOf[js.Any])
-  //      }
-  //    }
-  //    override def toString(): String = {
-  //      "AttrAction[key=" + key + ", value=" + value + "]"
-  //    }
-  //  }
 
   trait StandardHTML5Attributes {
 
