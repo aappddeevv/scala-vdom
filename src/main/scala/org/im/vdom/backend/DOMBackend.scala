@@ -130,7 +130,7 @@ trait DOMPatchesComponent extends PatchesComponent {
    * Automatically convert a Patch to a PatchPerformer so it can be
    * applied easily to an input.
    */
-  implicit def toPatchPerformer(patch: Patch) = applyPatch(patch)
+  implicit def toPatchPerformer(patch: Patch) = makeApplicable(patch)
   
   /**
    * Hack to convert patches to a runnable patch based on the backend then to
@@ -138,21 +138,22 @@ trait DOMPatchesComponent extends PatchesComponent {
    * works for the basics well. Otherwise, knowledge on how to use the context,
    * if needed, is too far down class.
    */
-  def applyPatch(patch: Patch): PatchPerformer = {
+  def makeApplicable(patch: Patch): PatchPerformer = {
     patch match {
+      
       case PathPatch(patch, path) =>
-        val pp = applyPatch(patch)
-        PatchPerformer { target => pp(find(target, patch, path)) }
+        val pp = makeApplicable(patch)
+        PatchPerformer { target => pp(find(target, patch, path).asInstanceOf[dom.Element]) }
 
       case SingleActionPatch(elAction) => PatchPerformer { target =>
-        PatchAction[dom.Node, This] { ctx: This#Context =>
+        PatchAction[PatchOutput, This] { ctx: This#Context =>
           elAction(target.asInstanceOf[dom.Element])
           target
         }
       }
 
       case OrderChildrenPatch(i) => PatchPerformer { target =>
-        PatchAction[dom.Node, This] { ctx: This#Context =>
+        PatchAction[PatchOutput, This] { ctx: This#Context =>
           // Process removes correctly, don't delete by index, delete by node object.
           i.removes.map(target.childNodes(_)).foreach(target.removeChild(_))
           // Process moves !?!?
@@ -161,13 +162,13 @@ trait DOMPatchesComponent extends PatchesComponent {
         }
       }
       case AndThenPatch(left, right) => {
-        val pleft = applyPatch(left)
-        val pright = applyPatch(right)
+        val pleft = makeApplicable(left)
+        val pright = makeApplicable(right)
         PatchPerformer { target => pleft(target) andThen pright(target) }
       }
 
       case MultipleActionPatch(elActions) => PatchPerformer { target =>
-        PatchAction[dom.Node, This] { ctx: This#Context =>
+        PatchAction[PatchOutput, This] { ctx: This#Context =>
           require(target != null)
           val ele = target.asInstanceOf[dom.Element]
           elActions.foreach(a => a(ele))
@@ -176,7 +177,7 @@ trait DOMPatchesComponent extends PatchesComponent {
       }
 
       case RemovePatch() => PatchPerformer { target =>
-        PatchAction[dom.Node, This] { ctx: This#Context =>
+        PatchAction[PatchOutput, This] { ctx: This#Context =>
           require(target != null)
           if (target != js.undefined) {
             //println(s"removing target node: $target")
@@ -189,7 +190,7 @@ trait DOMPatchesComponent extends PatchesComponent {
       }
 
       case InsertPatch(vnode) => PatchPerformer { target =>
-        PatchAction[dom.Node, This] { ctx: This#Context =>
+        PatchAction[PatchOutput, This] { ctx: This#Context =>
           require(target != null)
           val x = render(vnode)
           x.foreach(target.appendChild(_))
@@ -198,7 +199,7 @@ trait DOMPatchesComponent extends PatchesComponent {
       }
 
       case TextPatch(content) => PatchPerformer { el =>
-        PatchAction[dom.Node, This] { ctx: This#Context =>
+        PatchAction[PatchOutput, This] { ctx: This#Context =>
           require(el != null)
           if (el.nodeType == 3) {
             val textEl = el.asInstanceOf[dom.Text]
@@ -217,7 +218,7 @@ trait DOMPatchesComponent extends PatchesComponent {
       }
 
       case ReplacePatch(replacement) => PatchPerformer { target =>
-        PatchAction[dom.Node, This] { ctx: This#Context =>
+        PatchAction[PatchOutput, This] { ctx: This#Context =>
           val y = render(replacement)
           for {
             parent <- target.parentOpt
@@ -230,14 +231,14 @@ trait DOMPatchesComponent extends PatchesComponent {
       }
 
       case EmptyPatch => PatchPerformer { target =>
-        PatchAction[dom.Node, This] { ctx: This#Context => target }
+        PatchAction[PatchOutput, This] { ctx: This#Context => target }
       }
 
       case x@_ => throw new VDomException("Unknown patch type $x for $this")
     }
   }
 
-  private[this] def find[I <: dom.Node](target: I, patch: Patch, path: Seq[Int]): dom.Node = {
+  private[this] def find(target: dom.Node, patch: Patch, path: Seq[Int]): dom.Node = {
     path match {
       case Nil => target
       case head :: tail =>

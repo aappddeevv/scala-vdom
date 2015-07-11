@@ -59,7 +59,7 @@ sealed trait IOAction[+R] {
  * Helper functions.
  */
 object Action {
-  
+
   /** Convert a `Future` to a [[IOAction]]. */
   def from[R](f: Future[R]): IOAction[R] = FutureAction[R](f)
 
@@ -90,8 +90,12 @@ trait ActionContext
 
 /**
  * When applied, performs the patch action. Return the result
- * of the action. A patch action will return an element
+ * of the action. A PatchAction will return an object 
  * appropriate to the patch type. See the subclass documentation.
+ * 
+ * @tparam R output after applying patch
+ * @tparam B the `Backend`
+ *
  */
 trait PatchAction[+R, -B <: Backend] extends IOAction[R] { self =>
   /**
@@ -101,7 +105,9 @@ trait PatchAction[+R, -B <: Backend] extends IOAction[R] { self =>
 }
 
 object PatchAction {
-  /** Create a patch action */
+  /**
+   *  Create a patch action
+   */
   def apply[R, B <: Backend](f: B#Context => R) = new PatchAction[R, B] {
     def run(ctx: B#Context) = f(ctx)
   }

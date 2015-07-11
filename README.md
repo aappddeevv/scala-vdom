@@ -17,19 +17,7 @@ The virtual DOM may work across browser vendors although quirks in those browse 
 Note that the implementation approach allows you to use scala-vdom in multiple ways. For example,
 you can use it as a traditional virtual dom with diffing the full tree or you can use it to 
 stream a set of patches to a node for application (using patches and IOActions) and hence skip the entire
-vdom diffing process altogether. This last approach is much like the [github.com/incremental-dom](incremental-dom) 
-approach. In the "incremental" model, patches hold content information
-that is applied incrementally to the node. Note that the incremental-dom model is essentially
-like a XAML processor from the MS-world. XAML processors take XML and send a stream
-of "element" building instructions to an engine. This last approach does require significant
-amounts of state in the instruction processing engine but does remove the need for diffing
-DOM trees. Notice that we get this for free by explicitly modeling patches as a programmer-level
-class versus making it an opaque object. incremental-dom actually does store the virtual tree,
-it just stores it directly in the DOM elements themselves (:-)).
-
-It's weird how all of the implementations that deal with trees and UIs are similar but slightly
- different across the virtual dom world and many approaches used in the past and current.
-
+vdom diffing process altogether.
 
 ## Issues
 There are many issues that currently make this library unusable for production use. These 
@@ -39,19 +27,14 @@ issues will be resolved in future releases.
 * Adjacent VText nodes have bad behavior when rendered in the DOM. Browsers merge text nodes
 together in some cases. The general rule is to avoid adjacent text nodes in your virtual dom.
 * No support is provided for events.
-* There is no convenient virtual script-like interface. In the future, scalatag's will be adapted
-to produce virtual nodes.
-* While all backend specific code is isolated into a "Backend" object, the use of ElementAction
-seems duplicative. These classes need to be more cleverly refactored.
 * The presence of the correct ExceutionContext still needs to be traced and worked out so that
 it can always be specified by the programmer.
 * Should diff'ing and rendering have future return values to allow them to be async by default?
 Not sure this makes sense in every backend environment. Can't the programmer just wrap it into
 a future themselves if they want it async? There *are* side effects for rendering, potentially,
 but probably not diff'ing.
-* Attributes/properties are not back-end independent. I need to merge the ElementAction model
-into the core IOAction model while retaining the ability to link get/set information to the
-attribute/property specification.
+* I've not take the time to add more attributes to the set and adding your own attributes
+with custom hints is not easy at the moment, you have to create your own Backend object.
 
 
 ## Setting Attributes & Properties
@@ -99,3 +82,15 @@ Assume that `test7` is an id in your DOM where you want the toy example to rende
     }
     setTimeout(10 seconds)(clearInterval(cancel))
 ```
+
+## Virtual DOM implementations
+Here's a list of virtual dom implementations that I looked at:
+
+* react: Facebook's well known version
+* diffDom: js
+* virtual-dom: js
+* incremental-dom: js, essentially reproduces a XAML-ish type environment. From google.
+* dom-layer: js
+* ember / glimmer: js, have not looked at this quite yet
+
+There are a few more of course and I'll add the links when I update the documentation next.

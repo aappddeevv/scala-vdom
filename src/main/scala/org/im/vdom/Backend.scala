@@ -121,5 +121,9 @@ trait PatchesComponent { self: Backend =>
       new PatchPerformer { def apply(pi: PatchInput) = f(pi) }
   }
 
-  def applyPatch(patch: Patch): PatchPerformer
+  /**
+   * Make a patch able to be applied to `PatchInput` to create
+   * a runnable action.
+   */
+  def makeApplicable(patch: Patch): PatchPerformer
 }
