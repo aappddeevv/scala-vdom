@@ -31,11 +31,11 @@ import scala.util.control.NonFatal
 class VDomException(msg: String, parent: Throwable = null) extends RuntimeException(msg, parent)
 
 /**
- * A backend that can run actions. Yes, this looks a little like typesafe's slick.
- * I want to be able to run some of these actions in parallel when rendering on the
- * server side where single-threaded DOM access is not an issue. There were other
- * reasons for doing this as well: we need to isolate all system specific aspects
- * of patches and rendering in one place.
+ * A backend that can render a VNode, create functions that can take a Patch
+ * and allow it to be applied to backend specific object to create an IOAction
+ * and run IOActions.
+ *
+ * Yes, this looks a little like typesafe's slick.
  */
 trait Backend extends PatchesComponent with RendererComponent { self =>
   type Context >: Null <: BasicContext
@@ -111,5 +111,15 @@ trait RendererComponent { self: Backend =>
  */
 trait PatchesComponent { self: Backend =>
   type PatchInput
-  trait PatchPerformer[R] extends (PatchInput => IOAction[R])
+  type PatchOutput
+
+  trait PatchPerformer extends (PatchInput => IOAction[PatchOutput])
+
+  object PatchPerformer {
+    /** Create PatchPerformers more easily */
+    def apply(f: PatchInput => IOAction[PatchOutput]) = 
+      new PatchPerformer { def apply(pi: PatchInput) = f(pi) }
+  }
+
+  def applyPatch(patch: Patch): PatchPerformer
 }

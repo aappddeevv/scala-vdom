@@ -29,10 +29,9 @@ import scala.util.control.NonFatal
  * A Patch holds "difference" information that can be applied
  * to another object (the target) to make it look like another
  * (the source) object. The "difference" information must
- * be interpreted for each backend environment that the patch 
- * is targeting.
+ * be interpreted for each backend environment.
  * 
- * You can create patches either from diffing two virtual dom
+ * You can create patches either from diffing two virtual DOM
  * trees or you can just manually create the patches and compose
  * them using a sequence or `andThen` essentially creating a
  * patch stream or template language of DOM "updates."
@@ -63,10 +62,9 @@ case class ReplacePatch(replacement: VNode) extends Patch
 case class RemovePatch() extends Patch
 case class InsertPatch(vnode: VNode) extends Patch
 case class TextPatch(content: String) extends Patch
-case class MultipleActionPatch(elActions: Attrs) extends Patch
-case class SingleActionPatch(elAction: ElementAction) extends Patch
+case class MultipleActionPatch(elActions: Seq[KeyValue[_]]) extends Patch
+case class SingleActionPatch(elAction: KeyValue[_]) extends Patch
 case class OrderChildrenPatch(i: ReorderInstruction) extends Patch
 case class AndThenPatch(left: Patch, right: Patch) extends Patch
-
 
 case class ReorderInstruction(moves: Seq[(Int, Int)], removes: Seq[Int])

@@ -22,47 +22,11 @@ import scala.annotation.implicitNotFound
 import collection.immutable.BitSet
 import scalajs.js.UndefOr
 
+/**
+ * TODO: Decouple the DOM implementation part from the expression of
+ * the attributes and push the implementation part into the `Backend`.
+ */
 package object vdom {
-
-  /**
-   * A marker trait for an object that performs a side-effect. There could
-   * be substantial machinery underneath to perfrom the action.
-   */
-  trait Performer[T] extends (T => Unit)
-
-  /**
-   * An action to be applied to elements. The programmer task is to create
-   * action objects that have enough "configuration" data to properly execute
-   * a side-effect function on a DOM Element. Attributes and properties
-   * are handled this way because of the complexity of information needed
-   * to set them correctly.
-   */
-  trait ElementAction extends Performer[dom.Element] {
-    def key: AttributeKey
-  }
-
-  /** List of attribute actions. */
-  type Attrs = Seq[ElementAction]
-
-  /**
-   * List of empty attribute actions.
-   */
-  val EmptyAttrs = Seq[ElementAction]()
-
-  /**
-   * An attribute key has to have, at the very least, a name.
-   */
-  trait AttributeKey {
-    /** Name for external use */
-    def name: String
-
-    /**
-     * Create an `AttrAction` for an optional value. None should
-     * imply unsetting the value or no value to set. Semantics
-     * are left to subclasses.
-     */
-    def :=[T](v: Option[T]): ElementAction
-  }
 
   /**
    * Basic hint structure for working with elements.
@@ -110,97 +74,70 @@ package object vdom {
   implicit def hintsToElementHints(hints: BitSet) = ElementHints(values = hints)
 
   /**
-   * A wrapper around a string that build `ElementActon`s once you use the builder
-   * function `:=`.
-   *
-   * Unlike scalatags, we do not have an "action" object on each value set. We only
-   * need to worry about actions based on the key type, not key+value.
-   *
-   * @param name Name of key. Use the official HTML name for the name.
-   * @param hints Bitset values hints that can be used in ElementActions that are key specific.
+   * Keys are really builders of `KeyValue` objects.
    */
-  case class Key(name: String, hints: ElementHints = EmptyElementHints) extends AttributeKey {
-    def :=[T](v: Option[T]) = AttrAction(this, v)
-    def :=[T](v: T) = AttrAction(this, Some(v))
+  trait KeyPart { self =>    
+    def name: String
+    def :=[T](v: Option[T]): KeyValue[T] = KeyValue[T](self, v)    
+    def :=[T](v: T): KeyValue[T] = :=[T](Some(v))
   }
 
-  /** Name and value pair. Use this to perform the side effect on a DOM Element. */
-  case class AttrAction[T](val key: Key, val value: Option[T]) extends ElementAction {
-    def apply(el: dom.Element): Unit = {
-      //println(s"applied AttrAction: $key, $value")
-      value.fold(el.removeAttribute(key.name)) { v =>
-        //println(s"applying: ${key.name} -> ${value} to $el")
-        if (!(key.hints.values & MustUseAttribute).isEmpty)
-          el.setAttribute(key.name, v.toString)
-        else
-          el.asInstanceOf[js.Dynamic].updateDynamic(key.name)(v.asInstanceOf[js.Any])
-      }
-    }
-    override def toString(): String = {
-      "AttrAction[key=" + key + ", value=" + value + "]"
-    }
+  case class AttrKey(val name: String) extends KeyPart
+  case class StyleKey(val name: String) extends KeyPart
+
+  /**
+   * Combination of keys and values. A value of None should indicate
+   * that something should be unset or removed.
+   */
+  case class KeyValue[T](val key: KeyPart, val value: Option[T]) {
+    /**
+     * Convenience function to unset a value.
+     */
+    def unset = copy(value = None)
+  }
+  
+  /**
+   * Allow `.attr` on strings to create a `KeyValue`.
+   */
+  class RichAttrKey(name: String) {
+    def attr = AttrKey(name)
   }
 
   /**
-   * Style key.
+   * Allow `.style` on strings to create a `KeyValue`.
    */
-  case class StyleKey(name: String) extends AttributeKey {
-    def :=[T](v: Option[T]) = StyleAction(this, v)
-    def :=[T](v: T) = StyleAction(this, Some(v))
+  class RichStyleKey(name: String) {
+    def style = StyleKey(name)
   }
 
-  /**
-   * Style action. Directly adds value to the "style" property of the Element
-   */
-  case class StyleAction[T](val key: StyleKey, value: Option[T]) extends ElementAction {
-    def apply(el: dom.Element): Unit = {
-      val style = el.asInstanceOf[dom.html.Element].style
-      value.map(_.toString).fold[Unit](style.removeProperty(key.name))(v => style.setProperty(key.name, v, ""))
-    }
-  }
+  //
+  //  /** Name and value pair. Use this to perform the side effect on a DOM Element. */
+  //  case class AttrAction[T](val key: Key, val value: Option[T]) extends ElementAction {
+  //    def apply(el: dom.Element): Unit = {
+  //      //println(s"applied AttrAction: $key, $value")
+  //      value.fold(el.removeAttribute(key.name)) { v =>
+  //        //println(s"applying: ${key.name} -> ${value} to $el")
+  //        if (!(key.hints.values & MustUseAttribute).isEmpty)
+  //          el.setAttribute(key.name, v.toString)
+  //        else
+  //          el.asInstanceOf[js.Dynamic].updateDynamic(key.name)(v.asInstanceOf[js.Any])
+  //      }
+  //    }
+  //    override def toString(): String = {
+  //      "AttrAction[key=" + key + ", value=" + value + "]"
+  //    }
+  //  }
 
-  /**
-   * A key which produces `ByTheBookAttrAction`s.
-   */
-  case class ByTheBookKey(name: String) extends AttributeKey {
-    def :=[T](v: Option[T]) = ByTheBookAttrAction(this, v)
-    def :=[T](v: T) = ByTheBookAttrAction(this, Some(v))
-  }
+    trait StandardHTML5Attributes {
 
-  /**
-   * No hints processing at all. Simple sets the attribute as a string.
-   */
-  case class ByTheBookAttrAction[T](val key: ByTheBookKey, val value: Option[T]) extends ElementAction {
-    def apply(el: dom.Element): Unit =
-      value.fold(el.removeAttribute(key.name))(v => el.setAttribute(key.name, v.toString))
-  }
-
-  /** Enable "aname".attr syntax */
-  class RichElementActionKey(val name: String) {
-    def attr = Key(name)
-    def attr(hints: ElementHints) = Key(name, hints)
-  }
-
-  /** Enable "aname".attr syntax but produce `ByTheBookKey`s */
-  class RichElementByTheBookActionKey(val name: String) {
-    def attr = ByTheBookKey(name)
-  }
-
-  class RichElementStyleActionKey(val name: String) {
-    def attr = StyleKey(name)
-    def sattr = attr
-  }
-
-  trait StandardHTML5Attributes {
-
-    implicit class StandardStringToKey(name: String) extends RichElementActionKey(name)
+    implicit class StandardStringToKey(name: String) extends RichAttrKey(name)
 
     val acceptCharSet = "accept-charset".attr
 
-    val checked = "checked".attr(MustUseProperty)
+    val checked = "checked".attr
 
     /** Class attribute */
-    val `class` = "class".attr(MustUseAttribute)
+    val `class` = "class".attr
 
     /** Easier to type class attribute */
     val cls = `class`
@@ -213,18 +150,18 @@ package object vdom {
     val dir = "dir".attr
 
     /** Use this to hide an element instead of using class tricks. */
-    val hidden = "hidden".attr(MustUseAttribute)
+    val hidden = "hidden".attr
 
     val href = "href".attr
 
     val htmlFor = "for".attr
 
     /** id attribute */
-    val id = "id".attr(MustUseProperty)
+    val id = "id".attr
 
     val lang = "lang".attr
 
-    val selected = "selected".attr(MustUseProperty)
+    val selected = "selected".attr
 
     /** Inline style */
     val style = "style".attr
@@ -236,20 +173,19 @@ package object vdom {
     val title = "title".attr
 
     /** The value, typically of an input control. */
-    val value = "value".attr(MustUseProperty & HasSideEffects)
+    val value = "value".attr
   }
 
   object StandardHTML5Attributes extends StandardHTML5Attributes
 
   trait CustomHTML5Attributes {
-
-    implicit class CustomStringToKey(name: String) extends RichElementByTheBookActionKey(name)
+    implicit class CustomStringToKey(name: String) extends RichAttrKey(name)
 
     /** Custom data attribute */
-    def data(name: String) = Key("data-" + name)
+    def data(name: String) = AttrKey("data-" + name)
 
     /** For assistive technologies. */
-    def aria(name: String) = Key("aria-" + name)
+    def aria(name: String) = AttrKey("aria-" + name)
   }
 
   object CustomHTML5Attributes extends CustomHTML5Attributes
@@ -260,13 +196,13 @@ package object vdom {
   object HTML5Attributes extends StandardHTML5Attributes with CustomHTML5Attributes
 
   trait Style {
-    implicit class StyleToKey(name: String) extends RichElementStyleActionKey(name)
+    implicit class StyleToKey(name: String) extends RichStyleKey(name)
 
-    val textAlign = "textAlign".attr
-    val lineHeight = "lineHeight".attr
-    val border = "border".attr
-    val height = "height".attr
-    val width = "width".attr
+    val textAlign = "textAlign".style
+    val lineHeight = "lineHeight".style
+    val border = "border".style
+    val height = "height".style
+    val width = "width".style
   }
 
   object Style extends Style

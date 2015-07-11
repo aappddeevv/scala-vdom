@@ -74,7 +74,7 @@ object Utils {
    * attributes are the same, leave those in place and only
    * patch to remove attributes.
    */
-  def diffProperties(original: Attrs, target: Attrs): Patch = {
+  def diffProperties(original: Seq[KeyValue[_]], target: Seq[KeyValue[_]]): Patch = {
     //println("diffing properties")
     val deletes = original.diff(target).map { x =>
       //println(s"diffProperties delete: $x")
@@ -121,7 +121,7 @@ object Utils {
  * @param key a value used to minimize DOM element node creation
  */
 case class VirtualElementNode(val tag: String,
-    val attributes: Attrs = Seq(),
+    val attributes: Seq[KeyValue[_]] = Seq(),
     val children: Seq[VNode] = Seq(),
     override val key: Option[VNodeKey] = None,
     val namespace: Option[String] = None) extends VNode {
@@ -159,15 +159,15 @@ object VNode {
   def apply(text: String) = VirtualText(text)
 
   /** Create a new virtual element with the given tag */
-  def apply(tag: String, attributes: Attrs, children: VNode*): VirtualElementNode =
+  def apply(tag: String, attributes: Seq[KeyValue[_]], children: VNode*): VirtualElementNode =
     new VirtualElementNode(tag, attributes, children)
 
   /** Create a new virtual element with the given tag and key */
-  def apply(tag: String, key: Option[VNodeKey], attributes: Attrs, children: VNode*): VirtualElementNode =
+  def apply(tag: String, key: Option[VNodeKey], attributes: Seq[KeyValue[_]], children: VNode*): VirtualElementNode =
     new VirtualElementNode(tag, attributes, children, key)
 
   /** Create a new virtual element with the given tag and key */
-  def apply(tag: String, key: VNodeKey, attributes: Attrs, children: VNode*): VirtualElementNode =
+  def apply(tag: String, key: VNodeKey, attributes: Seq[KeyValue[_]], children: VNode*): VirtualElementNode =
     new VirtualElementNode(tag, attributes, children, Some(key))
 
   /** Create a new virtual element with children, but no attributes. */
