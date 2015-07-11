@@ -28,14 +28,11 @@ import org.im.vdom.backend.DOMBackend
 object Test extends JSApp {
 
   import org.im.vdom._
-  import DiffModule._
+  import VNode._
   import HTML5Attributes._
   import Style._
   import DOMBackend._ // brings in alot of implicits
 
-  val bs = scala.collection.mutable.BitSet()
-  bs += 10
-  bs.contains(12)
 
   def main(): Unit = {
     println("test of scala-vdom")
@@ -52,25 +49,25 @@ object Test extends JSApp {
 
     val target2 = document.getElementById("test2")
     require(target2 != null)
-    val p2 = InsertPatch(VNode("p", VNode("test2 succeeded: insert a new child")))
+    val p2 = InsertPatch(vnode("p", vnode("test2 succeeded: insert a new child")))
     DOMBackend.run(p2(target2))
 
     val target3 = document.getElementById("test3")
-    val p3 = ReplacePatch(VNode("div", VNode("p", VNode("test3 succeeded: replace a child"))))
+    val p3 = ReplacePatch(vnode("div", vnode("p", vnode("test3 succeeded: replace a child"))))
     DOMBackend.run(p3(target3))
 
     val target4 = document.getElementById("test4")
-    val p4 = InsertPatch(VNode("div", Seq(cls := Some("surroundme2")),
-      VNode("div", VNode("p", VNode("line 1")), VNode("p", VNode("line2")))))
+    val p4 = InsertPatch(vnode("div", Seq(cls := Some("surroundme2")),
+      vnode("div", vnode("p", vnode("line 1")), vnode("p", vnode("line2")))))
     DOMBackend.run(p4(target4))
 
     val target5 = document.getElementById("test5")
-    val vdom5_a = VNode("div", Seq(cls := Some("surroundme2")),
-      VNode("p", Seq(), VNode("test 5 word 1 - original"), VNode("test 5 word 2 - original")))
-    val vdom5_b = VNode("div", Seq(cls := Some("surroundme2")),
-      VNode("p", VNode("success! test 5 new line 1")), VNode("p", VNode("success! test 5 new line 2")))
+    val vdom5_a = vnode("div", Seq(cls := Some("surroundme2")),
+      vnode("p", Seq(), vnode("test 5 word 1 - original"), vnode("test 5 word 2 - original")))
+    val vdom5_b = vnode("div", Seq(cls := Some("surroundme2")),
+      vnode("p", vnode("success! test 5 new line 1")), vnode("p", vnode("success! test 5 new line 2")))
 
-    val patch5 = diff(VNode.empty, vdom5_a)
+    val patch5 = diff(empty, vdom5_a)
     DOMBackend.run(patch5(target5)).foreach { n =>
       val patch5_1 = diff(vdom5_a, vdom5_b)
       DOMBackend.run(patch5_1(n))
@@ -78,23 +75,23 @@ object Test extends JSApp {
 
     // Test patching via a one level path
     val target5aa = document.getElementById("test5a")
-    val vdom5aa = VNode("div", Seq(cls := Some("surroundme")), VNode("testa success on path!"))
+    val vdom5aa = vnode("div", Seq(cls := Some("surroundme")), vnode("testa success on path!"))
     val patch5aa = PathPatch(InsertPatch(vdom5aa), Nil)
     DOMBackend.run(patch5aa(target5aa))
 
     val target5ab = document.getElementById("test5b_parent")
-    val vdom5ab = VNode("div", Seq(cls := Some("surroundme")), VNode("test5b success on path!"))
+    val vdom5ab = vnode("div", Seq(cls := Some("surroundme")), vnode("test5b success on path!"))
     val patch5ab = RemovePatch().applyTo(Seq(0)) andThen PathPatch(InsertPatch(vdom5ab))
     DOMBackend.run(patch5ab(target5ab))
 
     val target6 = document.getElementById("test6")
-    val vdom6a = VNode("div", "key1", Seq(id := "willbedropped", cls := "surroundme"),
-      VNode("p", VNode("test 6 line 1")),
-      VNode("p", VNode("test 6 line 2")))
-    val vdom6b = VNode("div", "key1", Seq(cls := Some("surroundme2")),
-      VNode("p", VNode("success! test 6 line 1")),
-      VNode("span", VNode("***")),
-      VNode("p", VNode("success! test 6 line 2")))
+    val vdom6a = vnode("div", "key1", Seq(id := "willbedropped", cls := "surroundme"),
+      vnode("p", vnode("test 6 line 1")),
+      vnode("p", vnode("test 6 line 2")))
+    val vdom6b = vnode("div", "key1", Seq(cls := Some("surroundme2")),
+      vnode("p", vnode("success! test 6 line 1")),
+      vnode("span", vnode("***")),
+      vnode("p", vnode("success! test 6 line 2")))
 
     val new6 = DOMBackend.run(ReplacePatch(vdom6a)(target6))
     val patch6b = diff(vdom6a, vdom6b)    
@@ -105,10 +102,10 @@ object Test extends JSApp {
     //
     val target7 = document.getElementById("test7")
 
-    def box(count: Int) = VNode("div", Some("box"),
+    def box(count: Int) = vnode("div", Some("box"),
       Seq(textAlign := "center", lineHeight := s"${100 + count}px",
         border := "1px solid red", width := s"${100 + count}px", height := s"${100 + count}px"),
-      VNode(count.toString))
+      vnode(count.toString))
 
     var count = 0
     var tree = box(count)

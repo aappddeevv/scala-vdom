@@ -49,6 +49,7 @@ trait Keyable {
 
 /**
  * Virtual node can be rendered, diffed and keyed.
+ * 
  */
 sealed trait VNode extends Diffable with Keyable
 
@@ -153,31 +154,52 @@ case class EmptyNode() extends VNode {
   def diff(that: EmptyNode) = EmptyPatch
 }
 
+
+/**
+ * Control VNode creation from within a VNode. Instead of 
+ * composing your VTree externally using a function, you
+ * can have subtree generation occur inside the VNode itself.
+ * This allows you compose tree generation logic
+ * to another tree without relying on function composition
+ * external to the tree. Yeah, that sounds useless but it is
+ * helpful sometimes.
+ */
+case class ThunkNode(val f: () => VNode) extends VNode {
+  type That = ThunkNode  
+  def diff(that: ThunkNode) = DiffModule.diff(f(), that.f())
+}
+
+
 object VNode {
+    
+  /**
+   * Create a ThunkNode.
+   */
+  def thunk(f: => VNode) = ThunkNode(() => f)
 
   /** Create a new virtual text node */
-  def apply(text: String) = VirtualText(text)
+  def vnode(text: String) = VirtualText(text)
 
   /** Create a new virtual element with the given tag */
-  def apply(tag: String, attributes: Seq[KeyValue[_]], children: VNode*): VirtualElementNode =
+  def vnode(tag: String, attributes: Seq[KeyValue[_]], children: VNode*): VirtualElementNode =
     new VirtualElementNode(tag, attributes, children)
 
   /** Create a new virtual element with the given tag and key */
-  def apply(tag: String, key: Option[VNodeKey], attributes: Seq[KeyValue[_]], children: VNode*): VirtualElementNode =
+  def vnode(tag: String, key: Option[VNodeKey], attributes: Seq[KeyValue[_]], children: VNode*): VirtualElementNode =
     new VirtualElementNode(tag, attributes, children, key)
 
   /** Create a new virtual element with the given tag and key */
-  def apply(tag: String, key: VNodeKey, attributes: Seq[KeyValue[_]], children: VNode*): VirtualElementNode =
+  def vnode(tag: String, key: VNodeKey, attributes: Seq[KeyValue[_]], children: VNode*): VirtualElementNode =
     new VirtualElementNode(tag, attributes, children, Some(key))
 
   /** Create a new virtual element with children, but no attributes. */
-  def apply(tag: String, children: VNode*): VirtualElementNode =
+  def vnode(tag: String, children: VNode*): VirtualElementNode =
     new VirtualElementNode(tag, Seq(), children)
 
   /**
    * Create a new virtual element with a single child, no attributes or key.
    */
-  def apply(tag: String, child: VNode): VirtualElementNode = VNode(tag, Seq(child): _*)
+  def vnode(tag: String, child: VNode): VirtualElementNode = vnode(tag, Seq(child): _*)
 
   /**
    * An empty VNode.

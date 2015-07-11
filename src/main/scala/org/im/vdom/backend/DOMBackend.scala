@@ -115,6 +115,7 @@ trait DOMRendererComponent extends RendererComponent {
         }
         newNode
       case EmptyNode() => js.undefined
+      case ThunkNode(f) => render(f())
       case x@_ => throw new VDomException("Unknown VNode type $x for $this")
     }
   }

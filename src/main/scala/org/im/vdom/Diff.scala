@@ -16,8 +16,12 @@
 package org.im
 package vdom
 
+/**
+ * It's not clear why I can't just build this into the VNode object
+ * and let subclasses call the superclass method versus having this
+ * function stuck out here in the middle of nowhere.
+ */
 trait DiffModule {
-
   /**
    * Diff two VNode's and return a patch that makes original look like target.
    *
@@ -30,30 +34,17 @@ trait DiffModule {
    * @return a Patch that would make original look like target
    */
   def diff(original: VNode, target: VNode): Patch = {
-    //println(s"diffing: $original, $target")
     if (original == target) EmptyPatch
     else if (original == VNode.empty) InsertPatch(target)
     else if (target == VNode.empty) RemovePatch()
     else (original, target) match {
       case (o: VirtualText, t: VirtualText) => o.diff(t)
       case (o: VirtualElementNode, t: VirtualElementNode) => o.diff(t)
+      case (o: ThunkNode, t: ThunkNode) => o.diff(t)
+      case (o: ThunkNode, _) => diff(o.f(), target)
       case (_, t) => ReplacePatch(target)
     }
-  }
-
-  /**
-   * Reduction to a single patch object using composition. All
-   * patches will apply to the same DOM Element when applied.
-   */
-  implicit def seqPatchToPatch(seq: Seq[Patch]): Patch = seq.fold(EmptyPatch)((p, n) => p andThen n)
-
-  /**
-   * Enable explicit `.toPatch` notation on a sequence of patches.
-   */
-  implicit class ToPatch(seq: Seq[Patch]) {
-    def toPatch = seqPatchToPatch(seq)
-  }
- 
+  } 
 }
 
-object DiffModule extends DiffModule
+private[vdom] object DiffModule extends DiffModule

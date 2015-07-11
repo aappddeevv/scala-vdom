@@ -76,9 +76,9 @@ package object vdom {
   /**
    * Keys are really builders of `KeyValue` objects.
    */
-  trait KeyPart { self =>    
+  trait KeyPart { self =>
     def name: String
-    def :=[T](v: Option[T]): KeyValue[T] = KeyValue[T](self, v)    
+    def :=[T](v: Option[T]): KeyValue[T] = KeyValue[T](self, v)
     def :=[T](v: T): KeyValue[T] = :=[T](Some(v))
   }
 
@@ -95,7 +95,7 @@ package object vdom {
      */
     def unset = copy(value = None)
   }
-  
+
   /**
    * Allow `.attr` on strings to create a `KeyValue`.
    */
@@ -128,7 +128,7 @@ package object vdom {
   //    }
   //  }
 
-    trait StandardHTML5Attributes {
+  trait StandardHTML5Attributes {
 
     implicit class StandardStringToKey(name: String) extends RichAttrKey(name)
 
@@ -235,4 +235,22 @@ package object vdom {
     }
   }
 
+  /**
+   * Reduction to a single patch object using composition. All
+   * patches will apply to the same input object when applied.
+   */
+  implicit def seqPatchToPatch(seq: Seq[Patch]): Patch = seq.fold(EmptyPatch)((p, n) => p andThen n)
+
+  /**
+   * Enable explicit `.toPatch` notation on a sequence of patches.
+   */
+  implicit class ToPatch(seq: Seq[Patch]) {
+    def toPatch = seqPatchToPatch(seq)
+  }
+
+  /**
+   * Generate a Patch that describes the differences between original and target.
+   */
+  def diff(original: VNode, target: VNode): Patch = DiffModule.diff(original, target)
+  
 }
