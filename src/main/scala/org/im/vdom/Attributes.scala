@@ -158,12 +158,34 @@ trait Style {
 
 object Style extends Style
 
-
-trait UIEvents { 
-  implicit class FunctionToKey(eventType: String) extends RichString(eventType)  
+trait UIEvents {
+  implicit class FunctionToKey(eventType: String) extends RichString(eventType)
+  val abort = "abort".func
+  val beforeinput = "beforeinput".func
+  val blur = "blur".func
   val click = "click".func
+  val compositionstart = "compositionstart".func
+  val compositionupdate = "compositionupdate".func
+  val compositionend = "compositionend".func
   val dblclick = "dblclick".func
-  val hover = "hover".func
+  val error = "error".func
+  val focus = "focus".func
+  val focusin = "focusin".func
+  val focusout = "focusout".func
+  val input = "input".func
+  val keyup = "keyup".func
+  val keydown = "keydown".func
+  val load = "load".func
+  val mousedown = "mousedown".func
+  val mouseenter = "mouseenter".func
+  val mouseleave = "mouseleave".func
+  val mouseout = "mouseout".func
+  val mouseover = "mouseover".func
+  val resize = "resize".func
+  val scroll = "scroll".func
+  val select = "select".func
+  val unload = "unload".func
+  val wheel = "wheel".func
 }
 
 object UIEvents extends UIEvents

@@ -209,7 +209,10 @@ case class Delegate(private[events] var root: Option[dom.EventTarget] = None,
   /**
    * List of events that by default should be captured versus bubbled.
    */
-  private[events] val captureList = Seq("blur", "error", "focus", "load", "resize", "scroll")
+  private[events] val captureList = Seq("abort", "blur", 
+      "error", "focus", "load", 
+      "mouseenter", "mouseleave",
+      "resize", "scroll", "unload")
 
   /**
    * Whether the event should by default, be processed in the capture phase or not.

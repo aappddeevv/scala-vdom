@@ -208,7 +208,7 @@ object Test extends JSApp {
       })),
       text(s"Click Me - $count")), text(s"You have clicked the button $count10 times!"))
 
-    // Create the initial virtual button
+    // create the initial virtual button
     tree10 = render10(count10)
     // create the DOM button from the virtual button
     button10 = DOMBackend.render(tree10)
