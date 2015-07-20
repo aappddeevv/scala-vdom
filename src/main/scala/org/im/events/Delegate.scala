@@ -26,7 +26,27 @@ import org.scalajs.dom
  * Return true to allow a Delegate to process the current node in the
  * traversal.
  */
-trait Matcher extends Function2[dom.EventTarget, dom.EventTarget, Boolean]
+trait Matcher extends Function2[dom.EventTarget, dom.EventTarget, Boolean] { 
+  def and(rhs: Matcher) = AndMatch(this, rhs)  
+  def &&(rhs: Matcher) = and(rhs)
+  def or(rhs: Matcher) = OrMatch(this, rhs)
+  def ||(rhs: Matcher) = or(rhs)
+  def not = NotMatch(this)
+  def unary_! = not
+}
+
+private[events] case class NotMatch(matcher: Matcher) extends Matcher {
+ def apply(root: dom.EventTarget, current: dom.EventTarget) = !matcher(root, current)    
+}
+
+private[events] case class AndMatch(lhs: Matcher, rhs: Matcher) extends Matcher { 
+  def apply(root: dom.EventTarget, current: dom.EventTarget) = lhs(root, current) && rhs(root, current)    
+}
+
+private[events] case class OrMatch(lhs: Matcher, rhs: Matcher) extends Matcher { 
+  def apply(root: dom.EventTarget, current: dom.EventTarget) = lhs(root, current) || rhs(root, current)    
+}
+
 
 /**
  * Convenience constructors.
