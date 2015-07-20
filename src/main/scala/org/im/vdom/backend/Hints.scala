@@ -36,7 +36,9 @@ trait Hints {
  * Hints for working with elements and their properties/attributes. This
  * is essentially like React's DOMProperty injection concept.
  */
-case class AttrHint(val values: BitSet) extends Hints
+case class AttrHint(
+  /** Hints in bit form. */
+  val values: BitSet) extends Hints
 
 object Hints {
   /**
@@ -66,17 +68,76 @@ object Hints {
 
 trait AttrHints {
   import Hints._
+  import Constants.NS._
 
   private val attrHints: Map[String, AttrHint] = Map(
     "checked" -> MustUseProperty,
     "class" -> MustUseAttribute,
+    "height" -> MustUseAttribute,
     "hidden" -> MustUseAttribute,
     "id" -> MustUseProperty,
     "selected" -> MustUseProperty,
-    "value" -> (MustUseProperty & HasSideEffects))
+    "value" -> (MustUseProperty & HasSideEffects),
+    "width" -> MustUseAttribute)
+
+  private val svgHints: Map[String, AttrHint] = Map(
+    "clipPath" -> AttrHint(MustUseAttribute),
+    "cx" -> MustUseAttribute,
+    "cy" -> MustUseAttribute,
+    "d" -> MustUseAttribute,
+    "dx" -> MustUseAttribute,
+    "dy" -> MustUseAttribute,
+    "fill" -> MustUseAttribute,
+    "fillOpacity" -> AttrHint(MustUseAttribute),
+    "fontFamily" -> AttrHint(MustUseAttribute),
+    "fontSize" -> AttrHint(MustUseAttribute),
+    "fx" -> MustUseAttribute,
+    "fy" -> MustUseAttribute,
+    "gradientTransform" -> AttrHint(MustUseAttribute),
+    "gradientUnits" -> AttrHint(MustUseAttribute),
+    "markerEnd" -> AttrHint(MustUseAttribute),
+    "markerMid" -> AttrHint(MustUseAttribute),
+    "markerStart" -> AttrHint(MustUseAttribute),
+    "offset" -> MustUseAttribute,
+    "opacity" -> MustUseAttribute,
+    "patternContentUnits" -> MustUseAttribute,
+    "patternUnits" -> MustUseAttribute,
+    "points" -> MustUseAttribute,
+    "preserveAspectRatio" -> MustUseAttribute,
+    "r" -> MustUseAttribute,
+    "rx" -> MustUseAttribute,
+    "ry" -> MustUseAttribute,
+    "spreadMethod" -> MustUseAttribute,
+    "stopColor" -> AttrHint(MustUseAttribute),
+    "stopOpacity" -> AttrHint(MustUseAttribute),
+    "stroke" -> MustUseAttribute,
+    "strokeDasharray" -> AttrHint(MustUseAttribute),
+    "strokeLinecap" -> AttrHint(MustUseAttribute),
+    "strokeOpacity" -> AttrHint(MustUseAttribute),
+    "strokeWidth" -> AttrHint(MustUseAttribute),
+    "textAnchor" -> AttrHint(MustUseAttribute),
+    "transform" -> MustUseAttribute,
+    "version" -> MustUseAttribute,
+    "viewBox" -> AttrHint(MustUseAttribute),
+    "x1" -> MustUseAttribute,
+    "x2" -> MustUseAttribute,
+    "x" -> MustUseAttribute,
+    "xlinkActuate" -> AttrHint(MustUseAttribute),
+    "xlinkArcrole" -> AttrHint(MustUseAttribute),
+    "xlinkHref" -> AttrHint(MustUseAttribute),
+    "xlinkRole" -> AttrHint(MustUseAttribute),
+    "xlinkShow" -> AttrHint(MustUseAttribute),
+    "xlinkTitle" -> AttrHint(MustUseAttribute),
+    "xlinkType" -> AttrHint(MustUseAttribute),
+    "xmlBase" -> AttrHint(MustUseAttribute),
+    "xmlLang" -> AttrHint(MustUseAttribute),
+    "xmlSpace" -> AttrHint(MustUseAttribute),
+    "y1" -> MustUseAttribute,
+    "y2" -> MustUseAttribute,
+    "y" -> MustUseAttribute)
 
   /** Get a hint or None. */
-  def hint(name: String) = attrHints.get(name)
+  def hint(name: String) = attrHints.get(name) orElse svgHints.get(name)
 
 }
 

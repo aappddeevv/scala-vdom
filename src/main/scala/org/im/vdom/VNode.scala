@@ -40,7 +40,6 @@ trait Diffable { self =>
   def diff(that: That): Patch
 }
 
-
 /** A type that can provide a key. */
 trait Keyable {
   /** Default key is None */
@@ -48,8 +47,8 @@ trait Keyable {
 }
 
 /**
- * Virtual node can be rendered, diffed and keyed.
- * 
+ * Virtual node can be diffed and keyed.
+ *
  */
 sealed trait VNode extends Diffable with Keyable
 
@@ -76,14 +75,11 @@ object Utils {
    * patch to remove attributes.
    */
   def diffProperties(original: Seq[KeyValue[_]], target: Seq[KeyValue[_]]): Patch = {
-    //println("diffing properties")
     val deletes = original.diff(target).map { x =>
-      //println(s"diffProperties delete: $x")
-      SingleActionPatch(x.key := None)
+      MultipleActionPatch(Seq(x.unset))
     }
     val adds = target.diff(original).map { x =>
-      //println(s"diffProperties adds: $x")
-      SingleActionPatch(x)
+      MultipleActionPatch(Seq(x))
     }
     deletes ++ adds
   }
@@ -113,7 +109,7 @@ object Utils {
 
 /**
  * Virtual node representing an element. Various hooks and hacks help capture
- * programmer intent while still allowing a DOM node to be properly setup.
+ * programmer intent while still allowing a DOM node to be properly configured.
  *
  * @param tag the element tag
  * @param properties key-value pairs. Use "attributes" to enforce using get/set-Attribute otherwise
@@ -154,9 +150,8 @@ case class EmptyNode() extends VNode {
   def diff(that: EmptyNode) = EmptyPatch
 }
 
-
 /**
- * Control VNode creation from within a VNode. Instead of 
+ * Control VNode creation from within a VNode. Instead of
  * composing your VTree externally using a function, you
  * can have subtree generation occur inside the VNode itself.
  * This allows you compose tree generation logic
@@ -165,13 +160,20 @@ case class EmptyNode() extends VNode {
  * helpful sometimes.
  */
 case class ThunkNode(val f: () => VNode) extends VNode {
-  type That = ThunkNode  
+  type That = ThunkNode
   def diff(that: ThunkNode) = DiffModule.diff(f(), that.f())
 }
 
-
 object VNode {
-    
+
+  /**
+   * Create a constant ThunkNode. `f` is evaluated immediately.
+   */
+  def constant(f: => VNode) = {
+    val c = f
+    ThunkNode(() => c)
+  }
+  
   /**
    * Create a ThunkNode.
    */
@@ -182,34 +184,35 @@ object VNode {
 
   /** Create a new virtual element with the given tag */
   def vnode(tag: String, attributes: Seq[KeyValue[_]], children: VNode*): VirtualElementNode =
-    new VirtualElementNode(tag, attributes, children)
+    VirtualElementNode(tag, attributes, children)
 
   /** Create a new virtual element with the given tag and key */
   def vnode(tag: String, key: Option[VNodeKey], attributes: Seq[KeyValue[_]], children: VNode*): VirtualElementNode =
-    new VirtualElementNode(tag, attributes, children, key)
+    VirtualElementNode(tag, attributes, children, key)
 
   /** Create a new virtual element with the given tag and key */
   def vnode(tag: String, key: VNodeKey, attributes: Seq[KeyValue[_]], children: VNode*): VirtualElementNode =
-    new VirtualElementNode(tag, attributes, children, Some(key))
+    VirtualElementNode(tag, attributes, children, Some(key))
+
+  /** Create a new virtual element with the given tag, key and namespace */
+  def vnode(tag: String, key: Option[VNodeKey], namespace: Option[String], attributes: Seq[KeyValue[_]], children: VNode*): VirtualElementNode =
+    VirtualElementNode(tag, attributes, children, key, namespace)
 
   /** Create a new virtual element with children, but no attributes. */
   def vnode(tag: String, children: VNode*): VirtualElementNode =
-    new VirtualElementNode(tag, Seq(), children)
+    VirtualElementNode(tag, Seq(), children)
 
-  /**
-   * Create a new virtual element with a single child, no attributes or key.
-   */
-  def vnode(tag: String, child: VNode): VirtualElementNode = vnode(tag, Seq(child): _*)
+  /** Create a SVG element. */
+  def svg(attributes: Seq[KeyValue[_]], children: VNode*): VirtualElementNode =
+    VirtualElementNode("svg", attributes, children, None, Some(Constants.NS.SVG))
 
   /**
    * An empty VNode.
    */
   val empty = EmptyNode()
-  
+
   /**
    * Alias for creating a text node.
    */
   def text(content: String) = VirtualText(content)
-  
 }
-

@@ -21,16 +21,16 @@ package vdom
  * and let subclasses call the superclass method versus having this
  * function stuck out here in the middle of nowhere.
  */
-trait DiffModule {
+private[vdom] trait DiffModule {
   /**
    * Diff two VNode's and return a patch that makes original look like target.
-   *
-   * Since VNode is a sealed trait, we can match out on types and ensure that
-   * diffing is performed on like objects and optimize diff detection when its
-   * not.
+   * This function determines if the original and target are so different
+   * that it has to be replaced by a new node (e.g. insert, remove or replace)
+   * versus an update. If they are similar, they are diffed against
+   * each other.
    *
    * @param original the current VNode description
-   * @param target the target
+   * @param target the target VNode description
    * @return a Patch that would make original look like target
    */
   def diff(original: VNode, target: VNode): Patch = {

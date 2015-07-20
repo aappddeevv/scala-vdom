@@ -25,170 +25,85 @@ import scalajs.js.UndefOr
 package object vdom {
 
   /**
-   * Basic hint structure for working with elements.
-   */
-  trait Hints {
-    /** Hint information for working with values */
-    def values: BitSet
-  }
-
-  /**
-   * EVerything below here relates to setting attributes on elements so is a more
-   * specific concept of an `ElementAction` and `AttributeKey`. We can use
-   * scalatags to help create Performer objects once we become a more mature
-   * library. Ask Li for some help.
-   */
-
-  /**
-   * Hints for working with elements and their properties/attributes. This
-   * is essentially like React's DOMProperty injection concept.
-   */
-  case class ElementHints(val values: BitSet) extends Hints
-
-  /** Empty hint set. */
-  val EmptyHints = BitSet.empty
-
-  /** Should use set/get/remove*Property */
-  val MustUseAttribute = BitSet(1)
-
-  /** Must set value NOt using the attribute API */
-  val MustUseProperty = BitSet(2)
-
-  /** Setting the value has side effects. */
-  val HasSideEffects = BitSet(4)
-
-  /**
-   * Empty element hints with empty value hints.
-   */
-  val EmptyElementHints = ElementHints(values = EmptyHints)
-
-  /**
-   * Pure convenience function for now to promote BitSet to ElementHints
-   * If you specify more than just a BitSet for your hints, you need to use
-   * the full object syntax.
-   */
-  implicit def hintsToElementHints(hints: BitSet) = ElementHints(values = hints)
-
-  /**
    * Keys are really builders of `KeyValue` objects.
    */
   trait KeyPart { self =>
     def name: String
+    def namespace: Option[String] = None
+  }
+
+  /**
+   * Create KeyParts easily given a string.
+   */
+  class RichString(val name: String) {
+    def attr = AttrKey(name)
+    def style = StyleKey(name)
+    def func = FunctionKey(name)
+  }
+
+  /**
+   * Attribute that is part of an element.
+   */
+  case class AttrKey(val name: String, override val namespace: Option[String] = None) extends KeyPart { self =>
     def :=[T](v: Option[T]): KeyValue[T] = KeyValue[T](self, v)
     def :=[T](v: T): KeyValue[T] = :=[T](Some(v))
   }
 
-  case class AttrKey(val name: String) extends KeyPart
-  case class StyleKey(val name: String) extends KeyPart
+  /**
+   * Property that is part of a style.
+   */
+  case class StyleKey(val name: String) extends KeyPart { self =>
+    def :=[T](v: Option[T]): KeyValue[T] = KeyValue[T](self, v)
+    def :=[T](v: T): KeyValue[T] = :=[T](Some(v))
+  }
+
+  /**
+   * KeyValues that hold functions actually hold a tuple of information
+   * relevant to calling a handler when a dom.Event is fired.
+   */
+  type FunctionArgs = (events.Handler, events.Matcher, Option[Boolean])
+
+  /**
+   * Value that is a function for an event handler. The entire
+   * event handling capabilities need to be lifted to a string
+   * based action framework to allow server side rendering to 
+   * work better.
+   */
+  case class FunctionKey(val name: String) extends KeyPart { self =>
+    def ~~>(v: events.Handler) = KeyValue[FunctionArgs](self, Some((v, events.Matcher.MatchRoot, None)))
+    def ~~>(matcher: events.Matcher, v: events.Handler, useCapture: Option[Boolean] = None) =
+      KeyValue[FunctionArgs](self, Some((v, matcher, useCapture)))
+
+  }
 
   /**
    * Combination of keys and values. A value of None should indicate
-   * that something should be unset or removed.
+   * that something should be unset or removed. What unset or remove
+   * means is Backend dependent.
    */
   case class KeyValue[T](val key: KeyPart, val value: Option[T]) {
     /**
-     * Convenience function to unset a value.
+     * Convenience function to unset or remove a value.
      */
     def unset = copy(value = None)
   }
 
-  /**
-   * Allow `.attr` on strings to create a `KeyValue`.
-   */
-  class RichAttrKey(name: String) {
-    def attr = AttrKey(name)
-  }
-
-  /**
-   * Allow `.style` on strings to create a `KeyValue`.
-   */
-  class RichStyleKey(name: String) {
-    def style = StyleKey(name)
-  }
-
-  trait StandardHTML5Attributes {
-
-    implicit class StandardStringToKey(name: String) extends RichAttrKey(name)
-
-    val acceptCharSet = "accept-charset".attr
-
-    val checked = "checked".attr
-
-    /** Class attribute */
-    val `class` = "class".attr
-
-    /** Easier to type class attribute */
-    val cls = `class`
-
-    var contentEditable = "contenteditable".attr
-
-    /** Right click context menu */
-    val contextMenu = "contextmenu".attr
-
-    val dir = "dir".attr
-
-    /** Use this to hide an element instead of using class tricks. */
-    val hidden = "hidden".attr
-
-    val href = "href".attr
-
-    val htmlFor = "for".attr
-
-    /** id attribute */
-    val id = "id".attr
-
-    val lang = "lang".attr
-
-    val selected = "selected".attr
-
-    /** Inline style */
-    val style = "style".attr
-
-    /** Tab order */
-    val tabIndex = "tabindex".attr
-
-    /** Title */
-    val title = "title".attr
-
-    /** The value, typically of an input control. */
-    val value = "value".attr
-  }
-
-  object StandardHTML5Attributes extends StandardHTML5Attributes
-
-  trait CustomHTML5Attributes {
-    implicit class CustomStringToKey(name: String) extends RichAttrKey(name)
-
-    /** Custom data attribute */
-    def data(name: String) = AttrKey("data-" + name)
-
-    /** For assistive technologies. */
-    def aria(name: String) = AttrKey("aria-" + name)
-  }
-
-  object CustomHTML5Attributes extends CustomHTML5Attributes
-
-  /**
-   * Standard HTML5 attributes. Usually, you'll import this.
-   */
-  object HTML5Attributes extends StandardHTML5Attributes with CustomHTML5Attributes
-
-  trait Style {
-    implicit class StyleToKey(name: String) extends RichStyleKey(name)
-
-    val textAlign = "textAlign".style
-    val lineHeight = "lineHeight".style
-    val border = "border".style
-    val height = "height".style
-    val width = "width".style
-  }
-
-  object Style extends Style
-
   implicit class OptionOps[T](lhs: Option[T]) {
-    def fuzzyEq(rhs: Option[T]) = (rhs, lhs) match {
+    def fuzzyEq(rhs: Option[T]) = (lhs, rhs) match {
       case (None, None) => true
       case (Some(l), Some(r)) => l == r
+      case _ => false
+    }
+
+    /**
+     * rhs = None acts like a wildcard and matches anything
+     * on lhs. But lhs = None only matches a rhs None.
+     */
+    def wildcardEq(rhs: Option[T]) = (rhs, lhs) match {
+      case (None, None) => true
+      case (Some(l), Some(r)) => l == r
+      case (None, _) => false
+      case (_, None) => true
       case _ => false
     }
 
@@ -230,5 +145,5 @@ package object vdom {
    * Generate a Patch that describes the differences between original and target.
    */
   def diff(original: VNode, target: VNode): Patch = DiffModule.diff(original, target)
-  
+
 }

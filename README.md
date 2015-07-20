@@ -138,6 +138,49 @@ This is currently a gap in the library as I am still researching what to do for 
 seems that attaching directly to a DOm object may be Ok but some virtual dom libraries
 attach to the top of the tree.
 
+There are multiple ways to handle events.
+
+* You can use a delegate model
+  with the ability to manage events that occur further down in the tree.
+  To use this approach you need a way to "select" when a handler is fired
+  from a sub-node. This event handling model help improve performance in
+  some cases and hurt performance in others.
+* Or you can attach directly to a node and have a callback per event type
+  as needed.
+* Or you can lift all events into an event queue and wrap all events like
+  React or do some type of event to semantic action translation.
+* or you could Object.observe which may or may not be helpful in the long
+run.
+ 
+It appears that there are advantages for each approach and there
+is evidence is that for some events, like "error", you need to attach
+directly to the element that generates the error because the "error"
+event type does not bubble. In other words, to smooth over the DOM event
+handling bumps, you have alot of work ahead of you.
+
+There is also the issues of debouncing, where multiple similar events
+are compressed into one in order to avoid race conditions between
+events and UI activity.
+
+For the time being, will just copy [ftdomdelegate](https://github.com/ftlabs/ftdomdelegate)
+except make it immutable. There may be a sprinkling of influence from
+[jsaction](https://github.com/google/jsaction.git). Like jaction, it would
+be nice to make this all string oriented with a dynamic dispatch
+underneath--to help server side rendered pages load faster. And it would be
+nice to move to semantic actions versus raw event processing. Another lib is onoff although
+it is older [onoff](https://github.com/LiftoffSoftware/OnOff). EventEmitter (from node.js
+but ported to the browser) is another delegate-like library. They are all about
+the same--mutable, non-reactive.
+
+I'll look into reactive
+solutions like Li's rxscala, however, it is not clear that it will work easily in a
+virtual DOM because of the virtual layer.
+
+It is all very inconsistent.
+
+
+
+
 ## Toy Example
 
 Assume that `test7` is an id in your DOM where you want the toy example to render into:
@@ -168,7 +211,12 @@ Assume that `test7` is an id in your DOM where you want the toy example to rende
     setTimeout(10 seconds)(clearInterval(cancel))
 ```
 
-## Virtual DOM implementations
+## Browser Support
+
+It is known that this does not support IE8, too many exceptions and issues with Internet Explorer. It's possible that more modern versions of IE may work Ok. Overtime, we may be able to provide better support to various generations of IE, but it appears to be very difficult to do so.
+
+
+## Other Virtual DOM implementations
 Here's a list of virtual dom implementations that I looked at:
 
 * [react](https://facebook.github.io/react/): Facebook's well known version
@@ -177,3 +225,5 @@ Here's a list of virtual dom implementations that I looked at:
 * [incremental-dom](https://github.com/google/incremental-dom): js, essentially reproduces a XAML-ish type environment. From google.
 * [dom-layer](https://www.npmjs.com/package/dom-layer): js
 * [ember / glimmer](https://github.com/emberjs/ember.js/pull/10501): js, have not looked at this quite yet
+
+A number of libraries sit on top of these virtual DOM implementations. I need to look at these as well to understand how layers might be built above this vdom implementation and what is needed in this layer to facilitate easy adoption. 

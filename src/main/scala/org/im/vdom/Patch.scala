@@ -58,12 +58,14 @@ sealed trait Patch {
 
 case object EmptyPatch extends Patch
 case class PathPatch(patch: Patch, path: Seq[Int] = Nil) extends Patch
-case class ReplacePatch(replacement: VNode) extends Patch
 case class RemovePatch() extends Patch
+
+// Can I refactor these to simpler patches? e.g replace = create + remove + append?
+case class ReplacePatch(replacement: VNode) extends Patch
 case class InsertPatch(vnode: VNode) extends Patch
+
 case class TextPatch(content: String) extends Patch
 case class MultipleActionPatch(elActions: Seq[KeyValue[_]]) extends Patch
-case class SingleActionPatch(elAction: KeyValue[_]) extends Patch
 case class OrderChildrenPatch(i: ReorderInstruction) extends Patch
 case class AndThenPatch(left: Patch, right: Patch) extends Patch
 

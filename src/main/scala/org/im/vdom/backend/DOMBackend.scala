@@ -37,7 +37,6 @@ import org.im.vdom.RemovePatch
 import org.im.vdom.RendererComponent
 import org.im.vdom.ReplacePatch
 import org.im.vdom.RichNode
-import org.im.vdom.SingleActionPatch
 import org.im.vdom.TextPatch
 import org.im.vdom.VDomException
 import org.im.vdom.VNode
@@ -51,17 +50,23 @@ import vdom._
  * Subclass and override and define a new Backend to use your attribute hints
  * and side-effecting functions.
  */
-trait AttributeComponent {
+trait DOMAttributeComponent { self: AttrHints =>
 
-  protected def hint(name: String): Option[AttrHint] = AttrHints.hint(name)
+  /**
+   * Call `Element.setAttribute()` with an optional attribute.
+   */
+  protected def setAttribute(el: dom.Element, name: String,
+    value: String, namespace: Option[String] = None): Unit = {
+    namespace.fold(el.setAttribute(name, value))(ns => el.setAttributeNS(ns, name, value))
+  }
 
   protected def attr(node: dom.Node, kv: KeyValue[_]): Unit = {
     val el = node.asInstanceOf[dom.Element]
     val name = kv.key.name
     val hints: AttrHint = hint(name).getOrElse(Hints.EmptyAttrHints)
     kv.value.fold(el.removeAttribute(name)) { v =>
-      if (!(hints.values & MustUseAttribute).isEmpty)
-        el.setAttribute(name, v.toString)
+      if (!(hints.values & Hints.MustUseAttribute).isEmpty)
+        setAttribute(el, name, v.toString, kv.key.namespace)
       else
         el.asInstanceOf[js.Dynamic].updateDynamic(name)(v.asInstanceOf[js.Any])
     }
@@ -71,6 +76,15 @@ trait AttributeComponent {
     val name = kv.key.name
     val style = node.asInstanceOf[dom.html.Element].style
     kv.value.map(_.toString).fold[Unit](style.removeProperty(name))(v => style.setProperty(name, v, ""))
+  }
+
+  protected def handler(node: dom.Node, kv: KeyValue[FunctionArgs]): Unit = {
+    import events._
+    val name = kv.key.name
+    kv.value.fold {} { v =>
+      val d = Delegate()
+      d.on(name, v._1, v._2, v._3).root(Some(node))
+    }
   }
 
   /**
@@ -84,28 +98,52 @@ trait AttributeComponent {
    */
   implicit def liftKeyValue(kv: KeyValue[_]): KeyValueAction = {
     kv match {
-      case kv@KeyValue(AttrKey(_), _) => new KeyValueAction {
+      case kv@KeyValue(AttrKey(_, _), _) => new KeyValueAction {
         def apply(target: dom.Node): Unit = attr(target, kv)
       }
       case kv@KeyValue(StyleKey(_), _) => new KeyValueAction {
         def apply(target: dom.Node) = style(target, kv)
       }
-
-      case x@_ => throw new VDomException("Unknown key type in $kv for $this")
+      case kv@KeyValue(FunctionKey(_), _) => new KeyValueAction {
+        def apply(target: dom.Node) = handler(target, kv.asInstanceOf[KeyValue[FunctionArgs]])
+      }
     }
   }
 }
 
+/**
+ * Utilities for working with the DOM.
+ */
+object DOMUtils {
+
+  val doc = dom.document
+
+  /**
+   * Create a text node.
+   */
+  def createText(content: String) = doc.createTextNode(content)
+
+  /**
+   * Create a DOM element using selected information from description.
+   */
+  def createEl(description: VirtualElementNode): dom.Element = {
+    description.namespace.fold(doc.createElement(description.tag))(ns => doc.createElementNS(ns, description.tag))
+  }
+
+}
+
 trait DOMRendererComponent extends RendererComponent {
-  self: BasicDOMBackend with AttributeComponent =>
+  self: Backend with DOMAttributeComponent =>
+
+  import DOMUtils._
 
   type RenderOutput = UndefOr[dom.Node]
 
   def render(vnode: VNode): UndefOr[dom.Node] = {
     vnode match {
-      case VirtualText(content) => dom.document.createTextNode(content)
-      case VirtualElementNode(tag, attributes, children, key, namespace) =>
-        val newNode: UndefOr[dom.Element] = dom.document.createElement(tag)
+      case v@VirtualText(content) => createText(content)
+      case v@VirtualElementNode(tag, attributes, children, key, namespace) =>
+        val newNode: UndefOr[dom.Element] = createEl(v)
         newNode.foreach { newNode =>
           // apply the properties
           attributes.foreach(_(newNode))
@@ -121,8 +159,12 @@ trait DOMRendererComponent extends RendererComponent {
   }
 }
 
+/**
+ * DOM specific Patch processing. Includes an implicit to automatically
+ * convert Patches to PatchPerformers.
+ */
 trait DOMPatchesComponent extends PatchesComponent {
-  self: BasicDOMBackend with DOMRendererComponent with AttributeComponent =>
+  self: BasicDOMBackend with DOMRendererComponent with DOMAttributeComponent =>
 
   type PatchInput = dom.Node
   type PatchOutput = dom.Node
@@ -132,26 +174,19 @@ trait DOMPatchesComponent extends PatchesComponent {
    * applied easily to an input.
    */
   implicit def toPatchPerformer(patch: Patch) = makeApplicable(patch)
-  
+
   /**
-   * Hack to convert patches to a runnable patch based on the backend then to
-   * an IOAction to run with a context. We'll migrate this up-class after it
+   * Convert patches to a runnable patch based on the backend then it can be
+   * converted to an IOAction to run. We'll migrate this up-class after it
    * works for the basics well. Otherwise, knowledge on how to use the context,
    * if needed, is too far down class.
    */
   def makeApplicable(patch: Patch): PatchPerformer = {
+
     patch match {
-      
       case PathPatch(patch, path) =>
         val pp = makeApplicable(patch)
         PatchPerformer { target => pp(find(target, patch, path).asInstanceOf[dom.Element]) }
-
-      case SingleActionPatch(elAction) => PatchPerformer { target =>
-        PatchAction[PatchOutput, This] { ctx: This#Context =>
-          elAction(target.asInstanceOf[dom.Element])
-          target
-        }
-      }
 
       case OrderChildrenPatch(i) => PatchPerformer { target =>
         PatchAction[PatchOutput, This] { ctx: This#Context =>
@@ -181,7 +216,6 @@ trait DOMPatchesComponent extends PatchesComponent {
         PatchAction[PatchOutput, This] { ctx: This#Context =>
           require(target != null)
           if (target != js.undefined) {
-            //println(s"removing target node: $target")
             target.parentOpt.foreach { p =>
               p.removeChild(target)
             }
@@ -234,11 +268,12 @@ trait DOMPatchesComponent extends PatchesComponent {
       case EmptyPatch => PatchPerformer { target =>
         PatchAction[PatchOutput, This] { ctx: This#Context => target }
       }
-
-      case x@_ => throw new VDomException("Unknown patch type $x for $this")
     }
   }
 
+  /**
+   * Find a node by navigating through the children based on the child indexes.
+   */
   private[this] def find(target: dom.Node, patch: Patch, path: Seq[Int]): dom.Node = {
     path match {
       case Nil => target
@@ -267,9 +302,25 @@ trait BasicDOMBackend extends Backend {
  * An example of extending the basic backend with your components.
  */
 trait DOMBackend extends BasicDOMBackend with DOMPatchesComponent
-  with DOMRendererComponent with AttributeComponent
+  with DOMRendererComponent with DOMAttributeComponent with AttrHints
 
 /**
  * Use this backend when a DOM patching process is desired.
  */
 object DOMBackend extends DOMBackend
+
+
+/**
+Note: https://groups.google.com/forum/#!topic/scala-js/qlUJWSQ6ccE
+
+No Brendon is right: `if (this._map)` tests whether `this._map` is falsy.
+To test that according to JS semantics, you can use
+
+js.DynamicImplicits.truthValue(self._map.asInstanceOf[js.Dynamic])
+
+which returns false if and only if `self._map` is falsy. This pattern should typically be avoided in Scala code, unless transliterating from JS.
+
+Cheers,
+Sébastien
+
+*/

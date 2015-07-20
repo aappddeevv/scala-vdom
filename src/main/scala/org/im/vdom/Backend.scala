@@ -31,15 +31,13 @@ import scala.util.control.NonFatal
 class VDomException(msg: String, parent: Throwable = null) extends RuntimeException(msg, parent)
 
 /**
- * A backend that can render a VNode, create functions that can take a Patch
- * and allow it to be applied to backend specific object to create an IOAction
- * and run IOActions.
+ * A backend that can run IOActions.
  *
  * Yes, this looks a little like typesafe's slick.
  */
-trait Backend extends PatchesComponent with RendererComponent { self =>
+trait Backend { self =>
   type Context >: Null <: BasicContext
-  type This >: this.type <: Backend
+  protected[this] type This >: this.type <: Backend
 
   final def run[R](a: IOAction[R]): Future[R] = runInternal(a)
 
@@ -99,20 +97,30 @@ trait Backend extends PatchesComponent with RendererComponent { self =>
 /**
  * Backend rendering of VNodes
  */
-trait RendererComponent { self: Backend =>
+trait RendererComponent { self =>
 
+  /**
+   * The type output from the rendering.
+   */
   type RenderOutput
+  
+  /** Render a VNode producing RenderOutput objects. */
   def render(vnode: VNode): RenderOutput
 
 }
 
 /**
- * Backend dependent Patch execution.
+ * Convert Patches to functions that can be applied to 
+ * Backend specific elements to create IOActions to be run
+ * by the bBackend.
  */
-trait PatchesComponent { self: Backend =>
+trait PatchesComponent { self =>
   type PatchInput
   type PatchOutput
 
+  /**
+   * Convert PatchInput into a wrapped PatchOutput.
+   */
   trait PatchPerformer extends (PatchInput => IOAction[PatchOutput])
 
   object PatchPerformer {
@@ -123,7 +131,10 @@ trait PatchesComponent { self: Backend =>
 
   /**
    * Make a patch able to be applied to `PatchInput` to create
-   * a runnable action.
+   * a runnable action. Generally, this function must process
+   * all Patch types and produce a PatchPerformer object. Concrete
+   * backends will need to match against the Patch type and 
+   * take the appropriate action.
    */
   def makeApplicable(patch: Patch): PatchPerformer
 }

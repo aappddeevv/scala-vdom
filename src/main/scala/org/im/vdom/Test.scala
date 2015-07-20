@@ -18,6 +18,7 @@ package vdom
 
 import scala.concurrent.duration._
 import scala.concurrent.Await
+import scala.scalajs.js
 import scala.scalajs.js.JSApp
 import scala.scalajs.js.timers._
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
@@ -32,7 +33,6 @@ object Test extends JSApp {
   import HTML5Attributes._
   import Style._
   import DOMBackend._ // brings in alot of implicits
-
 
   def main(): Unit = {
     println("test of scala-vdom")
@@ -94,7 +94,7 @@ object Test extends JSApp {
       vnode("p", vnode("success! test 6 line 2")))
 
     val new6 = DOMBackend.run(ReplacePatch(vdom6a)(target6))
-    val patch6b = diff(vdom6a, vdom6b)    
+    val patch6b = diff(vdom6a, vdom6b)
     new6.foreach(n => DOMBackend.run(patch6b(n)))
 
     //
@@ -102,10 +102,14 @@ object Test extends JSApp {
     //
     val target7 = document.getElementById("test7")
 
-    def box(count: Int) = vnode("div", Some("box"),
-      Seq(textAlign := "center", lineHeight := s"${100 + count}px",
-        border := "1px solid red", width := s"${100 + count}px", height := s"${100 + count}px"),
-      vnode(count.toString))
+    def box(count: Int) = {
+      val s = Seq(textAlign := "center",
+        lineHeight := s"${100 + count * 2}px",
+        border := "1px solid red",
+        width := s"${100 + 5 * count}px",
+        height := s"${100 + 2 * count}px")
+      vnode("div", Some("box"), s, vnode(count.toString))
+    }
 
     var count = 0
     var tree = box(count)
@@ -155,5 +159,60 @@ object Test extends JSApp {
     //      rootNode = patch(rootNode, patches);
     //      tree = newTree;
     //}, 1000);
+
+    //
+    // Test 8 - SVG example
+    //
+    import SVGAttributes._
+    val target8 = document.getElementById("test8")
+    val svg8 = svg(Seq(), vnode("rect", None, Some(Constants.NS.SVG),
+      Seq(x := "30", width := "40", height := "10",
+        stroke := "#00cc00", fill := "#006600", width := "100", height := "20")))
+    val new8 = DOMBackend.run(InsertPatch(svg8)(target8))
+
+    //
+    // Test 9 - test Delegate.
+    //
+    val target9 = document.getElementById("test9button")
+    import events._
+    var d = Delegate()
+    d.on("click", (d: dom.Event, t: dom.EventTarget) => {
+      println(s"click event capture: $d, $t")
+      true
+    }).root(Some(target9))
+
+    import UIEvents._
+
+    //
+    // Test 10 - button that has a callback
+    //
+    val target10 = document.getElementById("test10button")
+    var count10: Int = 0
+    var button10: js.UndefOr[dom.Node] = js.undefined
+    var tree10: VNode = null
+
+    def render10(count: Int): VNode = vnode("div", vnode("button",
+      Seq(click ~~> ((d: dom.Event) => {
+        count10 += 1
+        // re-create the virtual tree
+        val newTree = render10(count10)
+        // calculate patch with new virtual tree
+        val patch = diff(tree10, newTree)
+        // apply the patch against the current DOM button and update the real DOM button
+        button10.foreach { n =>
+          DOMBackend.run(patch(n)).foreach(button10 = _)
+        }
+        // update the previous virtual tree with the new virtual tree
+        tree10 = newTree
+        true
+      })),
+      text(s"Click Me - $count")), text(s"You have clicked the button $count10 times!"))
+
+    // Create the initial virtual button
+    tree10 = render10(count10)
+    // create the DOM button from the virtual button
+    button10 = DOMBackend.render(tree10)
+    // add the new DOM button to the DOM tree so it displays
+    button10.foreach(target10.appendChild(_))
   }
 }
