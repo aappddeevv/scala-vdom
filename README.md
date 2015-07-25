@@ -14,8 +14,8 @@ This virtual DOM implementation is designed to support:
 
 
 The implementation approach allows you to use scala-vdom in multiple ways. For example,
-you can use it as a traditional virtual dom with diffing the full tree or you can use our own library to create patches and 
-stream them to a node (using IOActions).
+you can use it as a traditional virtual dom with diffing the full tree or you can use our 
+own library to create patches and stream them to a node (using IOActions).
 
 scala-vdom is designed to have multiple, replaceable layers:
 
@@ -34,6 +34,12 @@ The layers have been created to allow scala-vdom to execute efficienly in multip
 environments. scala-vdom was designed to run on clients and servers in both scalajs
 and non-scalajs environments. Most of the core layers create immutable objects that
 are Backend independent or at least highly decoupled from a Backend.
+
+To create the layers, a slick-like Backend was created. The Backend "lifts" the Patch
+and VNode objects into it using implicits and transforms those fairly simple objects
+into executable actions. This design approach makes extensions more difficult to make
+but it reduces the burden on the programmer by providing a much simpler set of classes
+and type signatures to build on.
 
 ## VNode
 Virtual DOM trees are built using the VNode classes. VNode objects are immutable. Use of 
@@ -99,23 +105,6 @@ Below are my notes for looking into diffing optimizations:
 * Lenses (you can use these now for VNode mutation) that point out where changes "might" occur. In other words, given a big tree, "here's" the places in the big tree to look for
 changes.
 
-## Issues
-There are many issues that currently make this library unusable for production use. These 
-issues will be resolved in future releases.
-
-* There are no optimizations in the diff'ing algorithm. It's a straight diff of the entire tree.
-* Adjacent VText nodes have bad behavior when rendered in the DOM. Browsers merge text nodes
-together in some cases. The general rule is to avoid adjacent text nodes in your virtual dom.
-* No support is provided for events.
-* The presence of the correct ExceutionContext still needs to be traced and worked out so that
-it can always be specified by the programmer.
-* Should diff'ing and rendering have future return values to allow them to be async by default?
-Not sure this makes sense in every backend environment. Can't the programmer just wrap it into
-a future themselves if they want it async? There *are* side effects for rendering, potentially,
-but probably not diff'ing.
-* I've not take the time to add more attributes to the set and adding your own attributes
-with custom hints is not easy at the moment, you have to create your own Backend object.
-
 ## Setting Attributes & Properties
 
 Most vdom libraries allow you to set attributes and properties on a javascript object. Technically
@@ -163,7 +152,7 @@ are compressed into one in order to avoid race conditions between
 events and UI activity.
 
 For the time being, will just copy [ftdomdelegate](https://github.com/ftlabs/ftdomdelegate)
-except make it immutable. There may be a sprinkling of influence from
+except make "delegate module" objects immutable. There may be a sprinkling of influence from
 [jsaction](https://github.com/google/jsaction.git). Like jaction, it would
 be nice to make this all string oriented with a dynamic dispatch
 underneath--to help server side rendered pages load faster. And it would be
@@ -172,13 +161,14 @@ it is older [onoff](https://github.com/LiftoffSoftware/OnOff). EventEmitter (fro
 but ported to the browser) is another delegate-like library. They are all about
 the same--mutable, non-reactive.
 
-I'll look into reactive
-solutions like Li's rxscala, however, it is not clear that it will work easily in a
-virtual DOM because of the virtual layer.
+I'll look into reactive solutions like Li's rxscala, however, it is not clear that it will 
+work easily in a virtual DOM because of the virtual layer versus using rxscala in the layer
+above scala-vdom.
 
 It is all very inconsistent.
 
-
+scala-vdom comes with a port to pure scalajs of ftdomdelegate. It can be used independently
+of the vdom package.
 
 
 ## Toy Example
@@ -211,11 +201,38 @@ Assume that `test7` is an id in your DOM where you want the toy example to rende
     setTimeout(10 seconds)(clearInterval(cancel))
 ```
 
+## Hooks or the Lack Thereof
+Virtual-dom contains hooks that run after a VNode has been turned into a DOM element. Many other libraries have
+something similar.
+
+Because we want to keep the Patch and VNode objects as simple as possible, hooks can be specified and used
+by the Backend if a Backend enables some kind of hook mechanism. Having said that, it is much easier
+to use the IOActions, which are monads, and just append your post-creation behavior as monadic computation.
+
+The layer that sits on top of scala-vdom may integrate hooks much more tightly into its syntax and then
+flow the hooks into the IOActions via monadic computations.
+
 ## Browser Support
 
 It is known that this does not support IE8, too many exceptions and issues with Internet Explorer. It's possible that more modern versions of IE may work Ok. Overtime, we may be able to provide better support to various generations of IE, but it appears to be very difficult to do so.
 
+## Issues
+There are many issues that currently make this library unusable for production use. These 
+issues will be resolved in future releases.
 
+* There are no optimizations in the diff'ing algorithm. It's a straight diff of the entire tree.
+* Adjacent VText nodes have bad behavior when rendered in the DOM. Browsers merge text nodes
+together in some cases. The general rule is to avoid adjacent text nodes in your virtual dom.
+* No support is provided for events.
+* The presence of the correct ExceutionContext still needs to be traced and worked out so that
+it can always be specified by the programmer.
+* Should diff'ing and rendering have future return values to allow them to be async by default?
+Not sure this makes sense in every backend environment. Can't the programmer just wrap it into
+a future themselves if they want it async? There *are* side effects for rendering, potentially,
+but probably not diff'ing.
+* I've not take the time to add more attributes to the set and adding your own attributes
+with custom hints is not easy at the moment, you have to create your own Backend object.
+ 
 ## Other Virtual DOM implementations
 Here's a list of virtual dom implementations that I looked at:
 
@@ -225,5 +242,9 @@ Here's a list of virtual dom implementations that I looked at:
 * [incremental-dom](https://github.com/google/incremental-dom): js, essentially reproduces a XAML-ish type environment. From google.
 * [dom-layer](https://www.npmjs.com/package/dom-layer): js
 * [ember / glimmer](https://github.com/emberjs/ember.js/pull/10501): js, have not looked at this quite yet
+* [citojs](https://github.com/joelrich/citojs): js
+* [cycle.js](https://github.com/cyclejs)
 
-A number of libraries sit on top of these virtual DOM implementations. I need to look at these as well to understand how layers might be built above this vdom implementation and what is needed in this layer to facilitate easy adoption. 
+A number of libraries sit on top of these virtual DOM implementations. I need to look at these as well to understand how layers might be built above this vdom implementation and what is needed in this layer to facilitate easy adoption.
+
+

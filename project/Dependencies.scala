@@ -10,6 +10,8 @@ object Dependencies {
 
   val scalatest = "org.scalatest" %% "scalatest" % "latest.release"
 
+  //val scalaJsDependencies = Seq("org.scala-js" %%% "scalajs-dom" % "0.8.1")
+  
   val testDeps = Seq(scalatest % Test)
 
 }
