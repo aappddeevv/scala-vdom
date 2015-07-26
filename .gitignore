@@ -6,5 +6,5 @@ bin
 .settings
 .classpath
 .idea
-.cache
+.cache*
 *.iml

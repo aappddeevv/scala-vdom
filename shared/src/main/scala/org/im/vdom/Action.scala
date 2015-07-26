@@ -124,6 +124,13 @@ object Action {
     (actions :+ SuccessAction(())).reduceLeft(_ andThen _).asInstanceOf[IOAction[Unit]]
 
   /**
+   * Create a IOAction that runs some other actions in sequence and combines their results
+   * with the given function.
+   */
+  def fold[T](actions: Seq[IOAction[T]], zero: T)(f: (T, T) => T)(implicit ec: ExecutionContext): IOAction[T] =
+    actions.foldLeft[IOAction[T]](Action.successful(zero)) { (za, va) => za.flatMap(z => va.map(v => f(z, v))) }
+
+  /**
    * An ExecutionContext used internally for executing plumbing operations during IOAction
    * composition.
    */
@@ -131,6 +138,16 @@ object Action {
     override def execute(runnable: Runnable): Unit = runnable.run()
     override def reportFailure(t: Throwable): Unit = throw t
   }
+  
+  /**
+   * Lift a function that takes a context.
+   */
+  def withContext[R, B <: Backend](f: B#Context => R) = ContextualAction(f)
+  
+  /**
+   * Lift a by-name value into an IOAction
+   */
+  def lift[R, B <: Backend](f: => R) = ContextualAction(f)
 }
 
 /**

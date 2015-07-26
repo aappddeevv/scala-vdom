@@ -32,7 +32,7 @@ object Test extends JSApp {
   import org.im.vdom._
   import VNode._
   import HTML5Attributes._
-  import Style._
+  import Styles._
   import DOMBackend._ // brings in the core implicits
 
   def main(): Unit = {

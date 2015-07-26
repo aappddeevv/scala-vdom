@@ -172,7 +172,7 @@ object VNode {
   def thunk(f: => VNode) = ThunkNode(() => f)
 
   /** Create a new virtual text node */
-  def vnode(text: String) = VirtualText(text)
+  def vnode(text: String) = VirtualElementNode(text)
 
   /** Create a new virtual element with the given tag */
   def vnode(tag: String, attributes: Seq[KeyValue[_]], children: VNode*): VirtualElementNode =

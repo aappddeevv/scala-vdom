@@ -8,7 +8,7 @@ This library is currently a proof of concept. See [Issues](#issues).
 This virtual DOM implementation is designed to support:
 
 * HTML5
-* Client and server side
+* Client (js, jvm) and server (js, jvm) side
 * Asynchronous processing, where possible.
 * Browser API standardization
 

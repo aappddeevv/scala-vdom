@@ -162,7 +162,7 @@ trait DOMRendererComponent extends RendererComponent {
         emptyNode.fold[IOAction[dom.Node]](Action.failed(new NoSuchElementException(s"Unable to create node with tag div")))(n => Action.successful(n))
 
       case ThunkNode(f) => render(f())
-      case x@_ => Action.failed(new VDomException("Unknown VNode type $x for $this"))
+      case x@_ => Action.failed(new VDomException(s"Unknown VNode type $x for $this"))
     }
   }
 }

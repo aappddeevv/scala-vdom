@@ -20,7 +20,7 @@ package backend
 import scala.collection.immutable.BitSet
 
 /**
- * Basic hint structure for working with elements.
+ * Basic hint structure for working with an element.
  */
 trait Hints {
   /** Hint information for working with values */
@@ -35,13 +35,18 @@ case class AttrHint(
   /** Hints in bit form. */
   val values: BitSet) extends Hints
 
+case class ElHint(
+  /** Hints in bit form. */
+  val values: BitSet) extends Hints
+
 object Hints {
-  /**
-   * Pure convenience function for now to promote BitSet to ElementHints
-   * If you specify more than just a BitSet for your hints, you need to use
-   * the full object syntax.
-   */
-  implicit def hintsToAttrHint(hints: BitSet) = AttrHint(values = hints)
+
+  /** Convert single BitSet to an AttrHint */
+  implicit def hintToAttrHint(hints: BitSet) = AttrHint(values = hints)
+
+  /** Convert multiple BitSets to an AttrHint */
+  implicit def hintsToAttrHints(hints: BitSet*) =
+    AttrHint(values = hints.fold(EmptyHints)(_ & _))
 
   /** Empty hint set. */
   val EmptyHints = BitSet.empty
@@ -50,16 +55,53 @@ object Hints {
   val MustUseAttribute = BitSet(1)
 
   /** Must set value NOt using the attribute API */
-  val MustUseProperty = BitSet(2)
+  val MustUseProperty = BitSet(1 << 2)
 
   /** Setting the value has side effects. */
-  val HasSideEffects = BitSet(4)
+  val HasSideEffects = BitSet(1 << 3)
+
+  val HasBooleanValue = BitSet(1 << 4)
+  val HasNumericValue = BitSet(1 << 5)
+  val HasPositiveNumericValue = BitSet(1 << 6)
+  val HasOverloadedBooleanValue = BitSet(1 << 8)
+
+  // Element hints are separately enumerated from attribute hints.
+  val OmitClosingTag = BitSet(1)
+  val NewlineEating = BitSet(2)
 
   /**
    * Empty hints with empty value hints.
    */
   val EmptyAttrHints = AttrHint(values = EmptyHints)
 }
+
+trait DOMElHints {
+  import Hints._
+
+  private val elHints: Map[String, ElHint] = Map(
+    "area" -> ElHint(values = OmitClosingTag),
+    "base" -> ElHint(values = OmitClosingTag),
+    "br" -> ElHint(values = OmitClosingTag),
+    "col" -> ElHint(values = OmitClosingTag),
+    "hr" -> ElHint(values = OmitClosingTag),
+    "img" -> ElHint(values = OmitClosingTag),
+    "input" -> ElHint(values = OmitClosingTag),
+    "keygen" -> ElHint(values = OmitClosingTag),
+    "listing" -> ElHint(values = NewlineEating),
+    "link" -> ElHint(values = OmitClosingTag),
+    "meta" -> ElHint(values = OmitClosingTag),
+    "param" -> ElHint(values = OmitClosingTag),
+    "pre" -> ElHint(values = NewlineEating),
+    "source" -> ElHint(values = OmitClosingTag),
+    "textarea" -> ElHint(values = NewlineEating),
+    "track" -> ElHint(values = OmitClosingTag),
+    "wbr" -> ElHint(values = OmitClosingTag))
+
+  /** Get a hint or None. */
+  def hint(name: String) = elHints.get(name)
+}
+
+private[backend] object DOMElHints extends DOMElHints
 
 trait DOMAttrHints {
   import Hints._
@@ -136,4 +178,4 @@ trait DOMAttrHints {
 
 }
 
-protected[backend] object DOMAttrHints extends DOMAttrHints
+private[backend] object DOMAttrHints extends DOMAttrHints

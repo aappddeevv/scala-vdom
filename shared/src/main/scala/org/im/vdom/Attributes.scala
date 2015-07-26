@@ -40,7 +40,13 @@ trait HTML5Attributes {
 
   implicit class StandardStringToKey(name: String) extends RichString(name)
 
+  val accept = "accept".attr
   val acceptCharSet = "accept-charset".attr
+  val accessKey = "accessKey".attr
+  val action = "action".attr
+  val allowFullScreen = "allowFullScreen".attr
+  val allowTransparency = "allowTransparency".attr
+  val alt = "alt".attr
   val checked = "checked".attr
   val `class` = "class".attr
   val cls = `class`
@@ -54,13 +60,53 @@ trait HTML5Attributes {
   val innerHTML = "innerHTML".attr
   val id = "id".attr
   val lang = "lang".attr
+  val scope = "scope".attr
+  val scoped = "scoped".attr
+  val scrolling = "scrolling".attr
+  val seamless = "seamless".attr
   val selected = "selected".attr
+  val shape = "shape".attr
+  val size = "size".attr
+  val sizes = "sizes".attr
+  val span = "span".attr
+  val spellCheck = "spellCheck".attr
+  val src = "src".attr
+  val srcDoc = "srcDoc".attr
   val style = "style".attr
   val tabIndex = "tabindex".attr
   val title = "title".attr
   val value = "value".attr
   val widthA = "width".attr // conflicts with style
   val heightA = "height".attr // conflicts with style
+
+  // Don't forget these...
+  /**
+   * async autoComplete autoFocus autoPlay 
+   * 
+   * cellPadding cellSpacing charSet checked
+   * classID className colSpan cols content contentEditable contextMenu controls
+   * coords crossOrigin 
+   * data dateTime defer dir disabled download draggable 
+   * encType
+   * form formAction formEncType formMethod formNoValidate formTarget frameBorder
+   * 
+   * headers height hidden high href hrefLang htmlFor httpEquiv 
+   * icon id 
+   * label lang list loop low 
+   * manifest marginHeight marginWidth max maxLength media mediaGroup
+   * method min multiple muted 
+   * 
+   * name noValidate 
+   * open optimum 
+   * pattern placeholder poster preload 
+   * radioGroup readOnly rel required role rowSpan rows sandbox 
+   * 
+   * srcSet start step style 
+   * tabIndex target title type 
+   * useMap 
+   * value 
+   * width wmode
+   */
 }
 
 trait CustomHTML5Attributes {
@@ -143,7 +189,7 @@ object SVGAttributes extends SVGAttributes
  * of an element. Some of them duplicate attributes found on other
  * elements e.g. height and width.
  */
-trait Style {
+trait Styles {
   implicit class StyleToKey(name: String) extends RichString(name)
   val border = "border".style
   val fill = "fill".style
@@ -156,4 +202,4 @@ trait Style {
   val widthS = width
 }
 
-object Style extends Style
+object Styles extends Styles
