@@ -208,7 +208,7 @@ object Test extends JSApp {
     var count10: Int = 0
     var button10: Future[dom.Node] = Future(null)
     var tree10: VNode = null
-
+ 
     def create10(count: Int): VNode = vnode("div", vnode("button",
       // When clicked, re-render...
       Seq(click ~~> ((d: dom.Event) => {

@@ -158,8 +158,8 @@ be nice to make this all string oriented with a dynamic dispatch
 underneath--to help server side rendered pages load faster. And it would be
 nice to move to semantic actions versus raw event processing. Another lib is onoff although
 it is older [onoff](https://github.com/LiftoffSoftware/OnOff). EventEmitter (from node.js
-but ported to the browser) is another delegate-like library. They are all about
-the same--mutable, non-reactive.
+but ported to the browser) is another delegate-like library. [dom-delegator](https://github.com/Raynos/dom-delegator)
+is another DOM event delegation library. They are all about the same--mutable, non-reactive.
 
 I'll look into reactive solutions like Li's rxscala, however, it is not clear that it will 
 work easily in a virtual DOM because of the virtual layer versus using rxscala in the layer
