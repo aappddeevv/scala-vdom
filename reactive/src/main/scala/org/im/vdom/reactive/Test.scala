@@ -59,7 +59,8 @@ object Test extends JSApp {
     ps
   }
 
-  // Observe stream of VNodes representing view updates
+  // Observe stream of VNodes representing view updates.
+  // We do not use an auto-render system, but this is the equivalent "rendering system".
   def renderer(vtree: Observable[VNode], container: dom.Element): BooleanCancelable = {
     container.innerHTML = ""
     var root: Future[dom.Node] = Future(document.createElement("div"))
@@ -87,13 +88,16 @@ object Test extends JSApp {
 
   /**
    * Convert user "intent" events (like updateCounter) to model state. Expose
-   * state as an observable.
+   * state as an observable. State is kept as 2 fields here for simplicity.
    */
-  var modelState: Int = 0 // state is kept in a var for simplicity
+  var modelState: Int = 0 
+  val modelList = scala.collection.mutable.ListBuffer[String]()
+  type ModelType = (Int, Seq[String])
   def model(intentInfo: Observable[String]) = {
-    intentInfo.map { eventContent =>
+    intentInfo.map { eventT =>
       modelState += 1
-      modelState
+      modelList += s"Item - $modelState"
+      (modelState, modelList)
     }
   }
 
@@ -102,36 +106,38 @@ object Test extends JSApp {
    * can be used by a rendering engine to render into the DOM. The user
    * then interacts with that view.
    */
-  def view(modelInfo: Observable[Int]) = {
+  def view(modelInfo: Observable[ModelType]) = {
     val clicks = PublishSubject[dom.Event]()
-    val vtreeObs = modelInfo.map { count =>
-      vnode("div", text(s"count: $count "),
+    val vtreeObs = modelInfo.map { case(count, list) =>
+      
+      val listOfThings = list.map(item => vnode("ul", text(item)))
+      
+      vnode("div", None, None, Seq(),
+        text(s"count: $count "),
         vnode("button", Seq(click ~~> ((e: dom.Event) => {
           clicks.onNext(e)
           true
-        })), text("Click Me!")))
+        })), text("Click Me!")),
+        vnode("ul",
+          listOfThings: _*))
     }
     (vtreeObs, clicks)
   }
 
   def main(): Unit = {
-    
     // Dance around circular dependency issues    
-    val placeholder = PublishSubject[Int]()
+    val placeholder = PublishSubject[ModelType]()
     val channel = SubjectChannel(placeholder)
 
     val (vtree, clicks) = view(placeholder)
-
     val Intent = intent(clicks)
-
     val Model = model(Intent)
-
     renderer(vtree, elementById[dom.Element]("test1"))
 
     // Brake circular dependency and start the "cycle" with the initial state value.
-    val cancelable = Model.startWith(modelState).subscribe(new monifu.reactive.Observer[Int] {
-      def onNext(i: Int) = {
-        channel.pushNext(i)
+    val cancelable = Model.startWith((modelState, Seq())).subscribe(new Observer[ModelType] {
+      def onNext(p: (Int, Seq[String])) = {
+        channel.pushNext(p)
         Ack.Continue
       }
       def onError(ex: Throwable): Unit = {

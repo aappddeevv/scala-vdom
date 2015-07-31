@@ -49,24 +49,23 @@ object Test extends JSApp {
     run(p1_5(target1_5))
 
     val target2 = document.getElementById("test2")
-    require(target2 != null)
-    val p2 = InsertPatch(vnode("p", vnode("test2 succeeded: insert a new child")))
+    val p2 = InsertPatch(vnode("p", text("test2 succeeded: insert a new child")))
     run(p2(target2))
 
     val target3 = document.getElementById("test3")
-    val p3 = ReplacePatch(vnode("div", vnode("p", vnode("test3 succeeded: replace a child"))))
+    val p3 = ReplacePatch(vnode("div", vnode("p", text("test3 succeeded: replace a child"))))
     run(p3(target3))
 
     val target4 = document.getElementById("test4")
     val p4 = InsertPatch(vnode("div", Seq(cls := Some("surroundme2")),
-      vnode("div", vnode("p", vnode("line 1")), vnode("p", vnode("line2")))))
+      vnode("div", vnode("p", text("line 1")), vnode("p", vnode("line2")))))
     run(p4(target4))
 
     val target5 = document.getElementById("test5")
     val vdom5_a = vnode("div", Seq(cls := Some("surroundme2")),
-      vnode("p", Seq(), vnode("test 5 word 1 - original"), vnode("test 5 word 2 - original")))
+      vnode("p", Seq(), text("test 5 word 1 - original"), text("test 5 word 2 - original")))
     val vdom5_b = vnode("div", Seq(cls := Some("surroundme2")),
-      vnode("p", vnode("success! test 5 new line 1")), vnode("p", vnode("success! test 5 new line 2")))
+      vnode("p", text("success! test 5 new line 1")), vnode("p", text("success! test 5 new line 2")))
 
     val patch5 = diff(empty, vdom5_a)
     run(patch5(target5)).foreach { n =>
@@ -76,25 +75,25 @@ object Test extends JSApp {
 
     // Test patching via a one level path
     val target5aa = document.getElementById("test5a")
-    val vdom5aa = vnode("div", Seq(cls := Some("surroundme")), vnode("testa success on path!"))
+    val vdom5aa = vnode("div", Seq(cls := Some("surroundme")), text("testa success on path!"))
     val patch5aa = PathPatch(InsertPatch(vdom5aa), Nil)
     run(patch5aa(target5aa))
 
     // Test patching a child
     val target5ab = document.getElementById("test5b_parent")
-    val vdom5ab = vnode("div", Seq(cls := Some("surroundme")), vnode("test5b success on path!"))
+    val vdom5ab = vnode("div", Seq(cls := Some("surroundme")), text("test5b success on path!"))
     // Adds a path two different ways
     val patch5ab = RemovePatch.applyTo(Seq(0)) andThen PathPatch(InsertPatch(vdom5ab))
     run(patch5ab(target5ab))
 
     val target6 = document.getElementById("test6")
     val vdom6a = vnode("div", "key1", Seq(id := "willbedropped", cls := "surroundme"),
-      vnode("p", vnode("test 6 line 1")),
-      vnode("p", vnode("test 6 line 2")))
+      vnode("p", text("test 6 line 1")),
+      vnode("p", text("test 6 line 2")))
     val vdom6b = vnode("div", "key1", Seq(cls := Some("surroundme2")),
-      vnode("p", vnode("success! test 6 line 1")),
-      vnode("span", vnode("***")),
-      vnode("p", vnode("success! test 6 line 2")))
+      vnode("p", text("success! test 6 line 1")),
+      vnode("span", text("***")),
+      vnode("p", text("success! test 6 line 2")))
 
     // patch between two vdom trees
     val patch6b = diff(vdom6a, vdom6b)
@@ -122,7 +121,7 @@ object Test extends JSApp {
         border := "1px solid red",
         width := s"${100 + 5 * count}px",
         height := s"${100 + 2 * count}px")
-      vnode("div", Some("box"), s, vnode(count.toString))
+      vnode("div", Some("box"), s, text(count.toString))
     }
 
     var count = 0
