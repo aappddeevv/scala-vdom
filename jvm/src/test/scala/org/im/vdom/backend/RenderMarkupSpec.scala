@@ -38,9 +38,9 @@ class RenderMarkupSpec extends FlatSpec
   import Styles._
 
   "Backend" should "render markup" in {
-    val vdom = vnode("div", Seq(cls := "highlighted", data("hah") := "blah", heightA := None,
+    val vdom = tag("div", Seq(cls := "highlighted", data("hah") := "blah", heightA := None,
       width := 30, border := "auto", textAlign := "left"),
-      vnode("p", text("blah")), vnode("br"))
+      tag("p", text("blah")), tag("br"))
     val action = b.render(vdom)
     val output = b.run(action)
     val markup = Await.result(output, 1 seconds)

@@ -18,7 +18,7 @@ package vdom
 
 import collection.mutable
 
-import DiffModule._
+import Diff._
 
 /**
  * An object that can be diff'd to produce a patch that takes this object into that.
@@ -33,8 +33,9 @@ trait Diffable { self =>
   type That >: self.type <: Diffable
   /**
    * Diff this object with another. The other object needs to be the same class.
+   * The patch returned should reflect `path` and any additional pathing needed.
    */
-  def diff(that: That): Patch
+  def diff(that: That, path: Seq[Int]): Patch
 }
 
 /** A type that can provide a key. */
@@ -47,7 +48,9 @@ trait Keyable {
  * Virtual node can be diffed and keyed.
  *
  */
-sealed trait VNode extends Diffable with Keyable
+sealed trait VNode extends Keyable with Diffable {
+  def closeToOrEquals(rhs: VNode): Boolean = VNodeUtils.closeToOrEquals(this, rhs)
+}
 
 /**
  * Node composed of text content.
@@ -55,51 +58,55 @@ sealed trait VNode extends Diffable with Keyable
 case class VirtualText(text: String) extends VNode {
   type That = VirtualText
 
-  def diff(that: VirtualText): Patch = {
+  def diff(that: That, path: Seq[Int]): Patch = {
     val r =
       if (text == that) EmptyPatch
       else TextPatch(that.text)
-    //println(s"diffing VirtualText: patch: $r")
-    r
+    r.applyTo(path)
   }
 }
 
-object Utils {
+object VNodeUtils {
+  /**
+   * Find removed els. Return indexes of removes. Indexes may not be sorted.
+   * Uses `closToOrEquals` to perform node comparison.
+   */
+  def findRemoves[T](source: Seq[T], target: Seq[T])(compare: (T, T) => Boolean): Seq[Int] =
+    // add index to each item, create (index, deleted) flags, filter to keep deletes, return only indexes
+    source.zipWithIndex.map {
+      case (vnode, index) =>
+        (index, kindOfContains(target, vnode)(compare))
+    }.filterNot(_._2).map(_._1)
+
+  def findRemovesCloseEnough[T] = findRemoves[T](_: Seq[T], _: Seq[T])(closeToOrEquals)
 
   /**
-   * Totally unoptimized :-). We should sort and see if any
-   * attributes are the same, leave those in place and only
-   * patch to remove attributes.
+   * Find added els. Return indexes of adds relative to the target sequence. Indexes may not be sorted.
    */
-  def diffProperties(original: Seq[KeyValue[_]], target: Seq[KeyValue[_]]): Patch = {
-    val deletes = original.diff(target).map { x =>
-      KeyValuePatch(Seq(x.unset))
-    }
-    val adds = target.diff(original).map { x =>
-      KeyValuePatch(Seq(x))
-    }
-    deletes ++ adds
-  }
+  def findAdds[T](source: Seq[T], target: Seq[T])(compare: (T, T) => Boolean = closeToOrEquals _): Seq[Int] =
+    findRemoves(target, source)(compare)
+
+  def findAddsCloseEnough[T] = findAdds[T](_: Seq[T], _: Seq[T])(closeToOrEquals)
 
   /**
-   * Observes keyed VNodes and tries to identify moved nodes.
-   * The algorithm has almost no other optimizations :-). Actually,
-   * it does not contain any optimizations :-)
+   * Like "Sequence.contains` but uses `closeToOrEqual` for the test.
    */
-  def diffChildren(original: Seq[VNode], target: Seq[VNode]): Patch = {
-    val tsize = target.size
-    if (target.size == 0) {
-      // Remove all the original nodes.
-      original.zipWithIndex.map {
-        case (value, index) => DiffModule.diff(value, VNode.empty).applyTo(Seq(index))
-      }
-    } else {
-      // Remove everything!
-      val removes = OrderChildrenPatch(ReorderInstruction(Seq(), 0 to original.length - 1))
-      val adds = target.map(InsertPatch(_))
-      removes andThen adds
+  def kindOfContains[T](seq: Seq[T], vnode: T)(compare: (T, T) => Boolean): Boolean =
+    seq.find { closeToOrEquals(_, vnode) }.fold(false)(_ => true)
+
+  def kindOfContainsCloseEnough[T] = kindOfContains[T](_: Seq[T], _: T)(closeToOrEquals)
+
+  /**
+   * Determine if two nodes are equal using standard equals, or for VirtualElementNodes, close to each other
+   * using `VirtualElementNode.closeTo`.
+   */
+  def closeToOrEquals[T](lhs: T, rhs: T): Boolean = {
+    (lhs, rhs) match {
+      case (o: VirtualElementNode, t: VirtualElementNode) => t.closeTo(o)
+      case p@(_, _) => p._1 == p._2
     }
   }
+
 }
 
 /**
@@ -110,7 +117,7 @@ object Utils {
  * @param properties key-value pairs. Use "attributes" to enforce using get/set-Attribute otherwise
  * property access is used.
  * @param children list of children vnodes
- * @param key a value used to minimize DOM element node creation
+ * @param key a value used to minimize DOM element node creation. Must be unique among siblings.
  */
 case class VirtualElementNode(val tag: String,
     val attributes: Seq[KeyValue[_]] = Seq(),
@@ -118,20 +125,29 @@ case class VirtualElementNode(val tag: String,
     override val key: Option[VNodeKey] = None,
     val namespace: Option[String] = None) extends VNode {
 
-  import Utils._
+  import VNodeUtils._
 
   type That = VirtualElementNode
 
   /**
+   * Compare to That using only the tag, key and potentially the namespace.
+   *
+   */
+  def closeTo(that: That): Boolean =
+    tag == that.tag && (key fuzzyEq that.key) && (namespace fuzzyEq that.namespace)
+
+  /**
    * Diff properties then children and compose the resulting patches.
    */
-  def diff(that: VirtualElementNode): Patch = {
-    if (tag == that.tag && key === that.key && (namespace fuzzyEq that.namespace)) {
+  def diff(that: That, path: Seq[Int]): Patch = {
+    if (closeTo(that)) {
       // diff properties and children
-      diffProperties(attributes, that.attributes) andThen diffChildren(children, that.children)
+//      println(s"tag: $tag, $key")
+      diffProperties(attributes, that.attributes).applyTo(path) andThen 
+        diffSeq(children, that.children, path)
     } else {
       // It's not the same node, so just replace it. Very unoptimized :-)
-      ReplacePatch(that)
+      ReplacePatch(that).applyTo(path)
     }
   }
 }
@@ -139,7 +155,7 @@ case class VirtualElementNode(val tag: String,
 /** An empty node that renders into something that is backend specific. */
 case class EmptyNode() extends VNode {
   type That = EmptyNode
-  def diff(that: EmptyNode) = EmptyPatch
+  def diff(that: That, path: Seq[Int]) = PathPatch(EmptyPatch, path)
 }
 
 /**
@@ -153,9 +169,21 @@ case class EmptyNode() extends VNode {
  */
 case class ThunkNode(val f: () => VNode) extends VNode {
   type That = ThunkNode
-  def diff(that: ThunkNode) = DiffModule.diff(f(), that.f())
+  def diff(that: That, path: Seq[Int]) = Diff.doDiff(f(), that.f(), path)
 }
 
+/**
+ * A comment node. Sometimes, comments need to be
+ * intersted into a rendering process e.g. markup generation.
+ */
+case class CommentNode(val content: String) extends VNode {
+  type That = CommentNode
+  def diff(that: That, path: Seq[Int]) = EmptyPatch.applyTo(path)
+}
+
+/**
+ * Smart constructors.
+ */
 object VNode {
 
   /**
@@ -172,26 +200,26 @@ object VNode {
   def thunk(f: => VNode) = ThunkNode(() => f)
 
   /** Create a new virtual text node */
-  def vnode(text: String) = VirtualElementNode(text)
+  def tag(text: String) = VirtualElementNode(text)
 
   /** Create a new virtual element with the given tag */
-  def vnode(tag: String, attributes: Seq[KeyValue[_]], children: VNode*): VirtualElementNode =
+  def tag(tag: String, attributes: Seq[KeyValue[_]], children: VNode*): VirtualElementNode =
     VirtualElementNode(tag, attributes, children)
 
   /** Create a new virtual element with the given tag and key */
-  def vnode(tag: String, key: Option[VNodeKey], attributes: Seq[KeyValue[_]], children: VNode*): VirtualElementNode =
-    VirtualElementNode(tag, attributes, children, key)
-
-  /** Create a new virtual element with the given tag and key */
-  def vnode(tag: String, key: VNodeKey, attributes: Seq[KeyValue[_]], children: VNode*): VirtualElementNode =
+  def tag(tag: String, key: VNodeKey, attributes: Seq[KeyValue[_]], children: VNode*): VirtualElementNode =
     VirtualElementNode(tag, attributes, children, Some(key))
 
+  /** Create a new virtual element with the given tag and key */
+  def tag(tag: String, key: VNodeKey, children: VNode*): VirtualElementNode =
+    VirtualElementNode(tag, Seq(), children, Some(key))
+
   /** Create a new virtual element with the given tag, key and namespace */
-  def vnode(tag: String, key: Option[VNodeKey], namespace: Option[String], attributes: Seq[KeyValue[_]], children: VNode*): VirtualElementNode =
+  def tag(tag: String, key: Option[VNodeKey], namespace: Option[String], attributes: Seq[KeyValue[_]], children: VNode*): VirtualElementNode =
     VirtualElementNode(tag, attributes, children, key, namespace)
 
   /** Create a new virtual element with children, but no attributes. */
-  def vnode(tag: String, children: VNode*): VirtualElementNode =
+  def tag(tag: String, children: VNode*): VirtualElementNode =
     VirtualElementNode(tag, Seq(), children)
 
   /** Create a SVG element. */
@@ -207,4 +235,9 @@ object VNode {
    * Alias for creating a text node.
    */
   def text(content: String) = VirtualText(content)
+
+  /**
+   * Insert a comment.
+   */
+  def comment(content: String) = CommentNode(content)
 }

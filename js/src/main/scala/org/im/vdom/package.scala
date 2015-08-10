@@ -52,7 +52,7 @@ case class FunctionValue(handler: events.Handler, matcher: events.Matcher = even
  * Value that is a function for an event handler. The entire
  * event handling capabilities need to be lifted to a string
  * based action framework to allow server side rendering to
- * work better.
+ * work better on jvm. Need to think this through for awhile.
  */
 case class FunctionKey(val name: String) extends KeyPart { self =>
   def ~~>(v: events.Handler) = KeyValue[FunctionValue](self, Some(FunctionValue(v, events.Matcher.MatchRoot, None)))

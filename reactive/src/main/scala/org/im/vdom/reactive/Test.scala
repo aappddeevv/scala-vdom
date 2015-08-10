@@ -90,13 +90,13 @@ object Test extends JSApp {
    * Convert user "intent" events (like updateCounter) to model state. Expose
    * state as an observable. State is kept as 2 fields here for simplicity.
    */
-  var modelState: Int = 0 
+  var modelState: Int = 0
   val modelList = scala.collection.mutable.ListBuffer[String]()
   type ModelType = (Int, Seq[String])
   def model(intentInfo: Observable[String]) = {
     intentInfo.map { eventT =>
-      modelState += 1
       modelList += s"Item - $modelState"
+      modelState += 1
       (modelState, modelList)
     }
   }
@@ -108,21 +108,32 @@ object Test extends JSApp {
    */
   def view(modelInfo: Observable[ModelType]) = {
     val clicks = PublishSubject[dom.Event]()
-    val vtreeObs = modelInfo.map { case(count, list) =>
-      
-      val listOfThings = list.map(item => vnode("ul", text(item)))
-      
-      vnode("div", None, None, Seq(),
-        text(s"count: $count "),
-        vnode("button", Seq(click ~~> ((e: dom.Event) => {
-          clicks.onNext(e)
-          true
-        })), text("Click Me!")),
-        vnode("ul",
-          listOfThings: _*))
+    val vtreeObs = modelInfo.map {
+      case (count, list) =>
+
+        val listOfThings = list.zipWithIndex.map {
+          case (item, i) =>
+            tag("li", Some("key" + i.toString), None, Seq(), text(item)) // full form of tag()
+        }
+
+        tag("div", Some("key1"), None, Seq(),
+          text(s"count: $count "),
+          tag("button", Some("buttonkey"), None, Seq(click ~~> ((e: dom.Event) => {
+            clicks.onNext(e)
+            true
+          })), text("Click Me!")),
+          tag("p", text("Hello World!")),
+          tag("ul", Some("ulkey"), None, Seq(),
+            listOfThings: _*))
     }
     (vtreeObs, clicks)
   }
+
+//  val v1 = tag("div", None, None, Seq())
+//  val v2 = tag("div", None, None, Seq())
+//  println("v1==v2?: " + (v1 == v2))
+//  println("v1 close to v2?: " + (v1 closeTo v2))
+//  println("v1 eq v2?: " + (v1 eq v2))
 
   def main(): Unit = {
     // Dance around circular dependency issues    

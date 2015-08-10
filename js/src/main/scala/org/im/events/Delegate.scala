@@ -26,8 +26,8 @@ import org.scalajs.dom
  * Return true to allow a Delegate to process the current node in the
  * traversal.
  */
-trait Matcher extends Function2[dom.EventTarget, dom.EventTarget, Boolean] { 
-  def and(rhs: Matcher) = AndMatch(this, rhs)  
+trait Matcher extends Function2[dom.EventTarget, dom.EventTarget, Boolean] {
+  def and(rhs: Matcher) = AndMatch(this, rhs)
   def &&(rhs: Matcher) = and(rhs)
   def or(rhs: Matcher) = OrMatch(this, rhs)
   def ||(rhs: Matcher) = or(rhs)
@@ -36,17 +36,16 @@ trait Matcher extends Function2[dom.EventTarget, dom.EventTarget, Boolean] {
 }
 
 private[events] case class NotMatch(matcher: Matcher) extends Matcher {
- def apply(root: dom.EventTarget, current: dom.EventTarget) = !matcher(root, current)    
+  def apply(root: dom.EventTarget, current: dom.EventTarget) = !matcher(root, current)
 }
 
-private[events] case class AndMatch(lhs: Matcher, rhs: Matcher) extends Matcher { 
-  def apply(root: dom.EventTarget, current: dom.EventTarget) = lhs(root, current) && rhs(root, current)    
+private[events] case class AndMatch(lhs: Matcher, rhs: Matcher) extends Matcher {
+  def apply(root: dom.EventTarget, current: dom.EventTarget) = lhs(root, current) && rhs(root, current)
 }
 
-private[events] case class OrMatch(lhs: Matcher, rhs: Matcher) extends Matcher { 
-  def apply(root: dom.EventTarget, current: dom.EventTarget) = lhs(root, current) || rhs(root, current)    
+private[events] case class OrMatch(lhs: Matcher, rhs: Matcher) extends Matcher {
+  def apply(root: dom.EventTarget, current: dom.EventTarget) = lhs(root, current) || rhs(root, current)
 }
-
 
 /**
  * Convenience constructors.
@@ -83,7 +82,7 @@ object Matcher {
 
   /**
    * Polyfill but not quite as robust as the reference below.
-   *  
+   *
    * @see [matches](https://developer.mozilla.org/en-US/docs/Web/API/Element/matches)
    */
   private[this] def matches(el: dom.EventTarget, selector: String): Boolean = {
@@ -123,11 +122,11 @@ object Handler {
   def apply(f: Function2[dom.Event, dom.Node, Boolean]) = new Handler {
     def apply(event: dom.Event, node: dom.Node) = f(event, node)
   }
-  
-  def apply(f: Function1[dom.Event, Boolean]) = new Handler { 
+
+  def apply(f: Function1[dom.Event, Boolean]) = new Handler {
     def apply(event: dom.Event, node: dom.Node) = f(event)
   }
-  
+
 }
 
 /**
@@ -138,18 +137,27 @@ object Handler {
 private[events] case class QualifiedHandler(handler: Handler, matcher: Matcher = Matcher.MatchRoot, capture: Boolean = false)
 
 /**
+ * An object that allows a side-effecting call to `cancel`.
+ * `delegate` is stuck in there for convienence.
+ */
+trait Cancelable { 
+  def cancel: Unit
+  def delegate: Delegate
+  }
+
+/**
  * Delegate all event calls on the root to registered handlers.
  * You can change the root object at any time and the handlers
- * are properly deregistered. A Delegate is immutable so adding
- * handlers or changing the root creates a copy.
+ * are properly deregistered.
  *
- * This is actually quite standad logic in java swing programs
- * using jgoodies.
+ * The approach used is standad logic in java swing programs
+ * with jgoodies.
  *
  * @see [UI EVents](http://www.w3.org/TR/DOM-Level-3-Events/#interface-EventListener)
  */
 case class Delegate(private[events] var root: Option[dom.EventTarget] = None,
     private[events] val handlers: collection.mutable.Map[String, collection.mutable.Set[QualifiedHandler]] = collection.mutable.Map.empty) {
+  self =>
 
   /**
    * Construct with a specific root.
@@ -209,10 +217,10 @@ case class Delegate(private[events] var root: Option[dom.EventTarget] = None,
   /**
    * List of events that by default should be captured versus bubbled.
    */
-  private[events] val captureList = Seq("abort", "blur", 
-      "error", "focus", "load", 
-      "mouseenter", "mouseleave",
-      "resize", "scroll", "unload")
+  private[events] val captureList = Seq("abort", "blur",
+    "error", "focus", "load",
+    "mouseenter", "mouseleave",
+    "resize", "scroll", "unload")
 
   /**
    * Whether the event should by default, be processed in the capture phase or not.
@@ -236,7 +244,9 @@ case class Delegate(private[events] var root: Option[dom.EventTarget] = None,
       setOfQL <- handlers.get(et)
       ql <- setOfQL
     } { stops += ((et, ql)) }
-    stops.foreach { p => el.removeEventListener(p._1, handler _, p._2.capture) }
+    stops.foreach { p =>
+      el.removeEventListener(p._1, handler _, p._2.capture) 
+      }
   }
 
   protected def startListeningTo(el: dom.EventTarget): Unit = {
@@ -250,19 +260,12 @@ case class Delegate(private[events] var root: Option[dom.EventTarget] = None,
   }
 
   /**
-   * Turn off listening for events for a specific eventType, handler, matcher,
-   * capture or some combination thereof. `None` implies wildcard for that
-   * component and will match all values for that parameter.
-   * Think of the parameters as a query by example model.
-   *
-   * @param eventType
-   * @param handler
-   * @param matcher
-   * @param useCapture
-   *
+   * Turn off listening for events for a specific eventType. Individual
+   * handlers should be cancelled using the Cancelable returned from `on`.
+   * 
+   * @param eventType The event type or None indicating all handlers for all event types.
    */
-  def off(eventType: Option[String] = None, handler: Option[Handler] = None,
-    matcher: Option[Matcher] = Some(Matcher.MatchAll), useCapture: Option[Boolean] = None): Delegate = {
+  def off(eventType: Option[String] = None): Delegate = {
     import vdom.OptionOps
     var removals: collection.mutable.Set[(String, QualifiedHandler)] = collection.mutable.Set.empty
 
@@ -272,8 +275,7 @@ case class Delegate(private[events] var root: Option[dom.EventTarget] = None,
       setOfQL <- handlers.get(et)
       ql <- setOfQL
     } {
-      if ((Some(et) wildcardEq eventType) && (Some(ql.handler) wildcardEq handler) &&
-        (Some(ql.matcher) wildcardEq matcher) && (Some(ql.capture) wildcardEq useCapture)) {
+      if (Some(et) wildcardEq eventType) {
         removals += ((et, ql))
         setOfQL -= ql
       }
@@ -286,12 +288,14 @@ case class Delegate(private[events] var root: Option[dom.EventTarget] = None,
   }
 
   /**
-   * Add a handler for a specific event.
+   * Add a handler for a specific event. The same handler can be added multiple times.
+   * 
+   * @return A Cancelable used to cancel the listening of the handler.
    */
   def on(eventType: String,
     handler: Handler,
     matcher: Matcher = Matcher.MatchRoot,
-    useCapture: Option[Boolean] = None): Delegate = {
+    useCapture: Option[Boolean] = None): Cancelable = {
 
     val capture = useCapture.getOrElse(isDefaultCapture(eventType))
 
@@ -301,11 +305,23 @@ case class Delegate(private[events] var root: Option[dom.EventTarget] = None,
       root.foreach(_.addEventListener(eventType, this.handler _, capture))
 
     // Create new listeners set for a specific event by adding the new delegate.
-    val newSet = handlers.getOrElse(eventType, collection.mutable.Set.empty) + QualifiedHandler(handler, matcher, capture)
+    val qhandler = QualifiedHandler(handler, matcher, capture)
+    val newHandlers = handlers.getOrElse(eventType, collection.mutable.Set.empty) + qhandler
 
-    // Create the copy updating handlers.
-    handlers += (eventType -> newSet)
+    // Update the handler set.
+    handlers += (eventType -> newHandlers)
 
-    this
+    new Cancelable {
+      private val _eventType = eventType
+      private val _qhandler = qhandler      
+      def cancel: Unit = {
+        handlers.get(_eventType).foreach(_.remove(_qhandler))
+        if(handlers.get(_eventType).map(_.size).getOrElse(0)>0) {
+          // no need to listen to this event type, no handlers
+          root.foreach(_.removeEventListener(_eventType, self.handler _, capture))
+        }
+      }
+      def delegate = self
+    }
   }
 }

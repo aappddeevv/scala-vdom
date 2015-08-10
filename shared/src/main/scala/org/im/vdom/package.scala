@@ -17,7 +17,7 @@ package org.im
 
 import scala.language._
 
-import org.im.vdom.DiffModule
+import org.im.vdom.Diff
 import org.im.vdom.EmptyPatch
 import org.im.vdom.Patch
 import org.im.vdom.VNode
@@ -70,6 +70,10 @@ package object vdom {
   }
 
   implicit class OptionOps[T](lhs: Option[T]) {
+    /**
+     * True if both are None or if they both have values and the values
+     * are the same. Otherwise, false.
+     */
     def fuzzyEq(rhs: Option[T]) = (lhs, rhs) match {
       case (None, None) => true
       case (Some(l), Some(r)) => l == r
@@ -88,7 +92,13 @@ package object vdom {
       case _ => false
     }
 
+    /**
+     * See `===`
+     */
     def /==(rhs: Option[T]) = !(===(rhs))
+    /**
+     * Equal only if they are both defined and the defined values are equal.
+     */
     def ===(rhs: Option[T]) = lhs.toRight(false) == rhs.toRight(true)
   }
 
@@ -107,13 +117,14 @@ package object vdom {
    * Enable explicit `.toPatch` notation on a sequence of patches.
    */
   implicit class ToPatch(seq: Seq[Patch]) {
-    def toPatch = seqPatchToPatch(seq)
+    def to1Patch = seqPatchToPatch(seq)
   }
 
   /**
    * Generate a Patch that describes the differences between original and target.
    */
-  def diff(original: VNode, target: VNode): Patch = DiffModule.diff(original, target)
+  def diff(original: VNode, target: VNode): Patch = Diff.diff(original, target)
+
 
   /**
    * The exception type in this system.

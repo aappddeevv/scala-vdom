@@ -51,17 +51,48 @@ sealed trait Patch {
   def andThen(right: Patch) = AndThenPatch(this, right)
 }
 
+/**
+ * Do not do anything. This may translate into some type of "dummy" element.
+ */
 case object EmptyPatch extends Patch
+
+/**
+ * Apply a patch to a particular tree child. Indexes navigate children.
+ */
 case class PathPatch(patch: Patch, path: Seq[Int] = Nil) extends Patch
+
+/**
+ * Remove a node.
+ */
 case object RemovePatch extends Patch
 
-// Can I refactor these to simpler patches? e.g replace = create + remove + append?
+/**
+ * Replace a node. Access to the parent will be required.
+ */
 case class ReplacePatch(replacement: VNode) extends Patch
-case class InsertPatch(vnode: VNode) extends Patch
 
+/** Insert a new child at the specified index, or append if index is not specified. */
+case class InsertPatch(vnode: VNode, index: Option[Int] = None) extends Patch
+
+/** Create a text node. */
 case class TextPatch(content: String) extends Patch
+
+/**
+ * Apply attributes/properties to an element.
+ */
 case class KeyValuePatch(elActions: Seq[KeyValue[_]]) extends Patch
+
+/** Manipulate children. */
 case class OrderChildrenPatch(i: ReorderInstruction) extends Patch
+
+/**
+ * Combine two patches in sequence.
+ */
 case class AndThenPatch(left: Patch, right: Patch) extends Patch
 
+/**
+ * Instruction to re-order children. Removes should be processed first
+ * then the moves. Duplicate indexes in any of these structures could
+ * produce surprises.
+ */
 case class ReorderInstruction(moves: Seq[(Int, Int)], removes: Seq[Int])

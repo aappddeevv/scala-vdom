@@ -155,14 +155,28 @@ trait RendererComponent { self =>
 /**
  * Convert Patches to functions that can be applied to
  * Backend specific elements to create IOActions to be run
- * by the bBackend.
+ * by the bBackend. Concrete backends will create ways
+ * to implicitly create PatchPerformers and 
+ * have transparent syntax to run a Patch, but you can 
+ * also create a PatchPerformer explicitly so you can
+ * add before and after actions to run using IOAction
+ * composition.
+ * 
+ * PatchInput does not necessary have to be
+ * a specific Element type for the visual UI tree, it could
+ * be a wrapped object that contains additional information
+ * that is used to create the IOAction. For example, it could
+ * contain different types of interceptors/callbacks around
+ * creating Backend specific elements. 
  */
 trait PatchesComponent { self =>
   type PatchInput
   type PatchOutput
 
   /**
-   * Convert PatchInput into a wrapped PatchOutput.
+   * Convert PatchInput into a wrapped PatchOutput. A PatchPerformer
+   * can be applied to a PatchInput by the user. The output IOAction
+   * will still need to be run.
    */
   trait PatchPerformer extends (PatchInput => IOAction[PatchOutput])
 
@@ -179,7 +193,7 @@ trait PatchesComponent { self =>
    * a runnable action. Generally, this function must process
    * all Patch types and produce a PatchPerformer object. Concrete
    * backends will need to match against the Patch type and
-   * take the appropriate action.
+   * then create a specialized PatchPerformer.
    */
   def makeApplicable(patch: Patch)(implicit executor: ExecutionContext): PatchPerformer
 }

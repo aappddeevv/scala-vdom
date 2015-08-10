@@ -42,7 +42,7 @@ object Test extends JSApp {
 
     val comp = Component[CountState] { state =>
       val newCount = state.count + 1
-      val render = vnode("div", vnode("button",
+      val render = tag("div", tag("button",
         text(s"Click Me - $newCount"), text(s"You have clicked the button $newCount times!")))
       (render, state.copy(tree = render, count = newCount))
     }

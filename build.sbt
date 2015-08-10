@@ -24,7 +24,8 @@ lazy val vdom = crossProject.in(file(".")).
   settings(commonSettings: _*).
   settings(EclipseKeys.useProjectId := true).
 
-  jvmSettings(libraryDependencies ++= Seq("org.scalatest" %% "scalatest" % "latest.release" % "test")).
+  jvmSettings(libraryDependencies ++= Seq("org.scalatest" %% "scalatest" % "latest.release" % "test",
+	 "org.scalacheck" %% "scalacheck" % "1.12.4" % "test")).
 
   jsSettings(
     libraryDependencies ++= Seq("org.scala-js" %%% "scalajs-dom" % "latest.release"),

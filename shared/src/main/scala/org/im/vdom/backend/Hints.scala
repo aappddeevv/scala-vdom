@@ -35,10 +35,18 @@ case class AttrHint(
   /** Hints in bit form. */
   val values: BitSet) extends Hints
 
+/**
+ * Hints for Elements.
+ */
 case class ElHint(
   /** Hints in bit form. */
   val values: BitSet) extends Hints
 
+/**
+ *  Some of these hints are only relevant with certain backends,
+ *  such as the DOM backend e.g. MustUseProperty. Some, are
+ *  related to multiple backends, such as HasPositiveNumericValue.
+ */
 object Hints {
 
   /** Convert single BitSet to an AttrHint */

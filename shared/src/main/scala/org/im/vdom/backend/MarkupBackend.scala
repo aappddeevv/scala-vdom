@@ -75,6 +75,8 @@ trait MarkupRendererComponent extends RendererComponent {
 
       case EmptyNode() =>
         Action.successful("<div></div>")
+      case CommentNode(content) =>
+        Action.successful("<!-- " + content + " -->")
       case ThunkNode(f) =>
         render(f())
       case x@_ =>

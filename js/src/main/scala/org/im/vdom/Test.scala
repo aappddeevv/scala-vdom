@@ -49,23 +49,23 @@ object Test extends JSApp {
     run(p1_5(target1_5))
 
     val target2 = document.getElementById("test2")
-    val p2 = InsertPatch(vnode("p", text("test2 succeeded: insert a new child")))
+    val p2 = InsertPatch(tag("p", text("test2 succeeded: insert a new child")))
     run(p2(target2))
 
     val target3 = document.getElementById("test3")
-    val p3 = ReplacePatch(vnode("div", vnode("p", text("test3 succeeded: replace a child"))))
+    val p3 = ReplacePatch(tag("div", tag("p", text("test3 succeeded: replace a child"))))
     run(p3(target3))
 
     val target4 = document.getElementById("test4")
-    val p4 = InsertPatch(vnode("div", Seq(cls := Some("surroundme2")),
-      vnode("div", vnode("p", text("line 1")), vnode("p", vnode("line2")))))
+    val p4 = InsertPatch(tag("div", Seq(cls := Some("surroundme2")),
+      tag("div", tag("p", text("line 1")), tag("p", tag("line2")))))
     run(p4(target4))
 
     val target5 = document.getElementById("test5")
-    val vdom5_a = vnode("div", Seq(cls := Some("surroundme2")),
-      vnode("p", Seq(), text("test 5 word 1 - original"), text("test 5 word 2 - original")))
-    val vdom5_b = vnode("div", Seq(cls := Some("surroundme2")),
-      vnode("p", text("success! test 5 new line 1")), vnode("p", text("success! test 5 new line 2")))
+    val vdom5_a = tag("div", Seq(cls := Some("surroundme2")),
+      tag("p", Seq(), text("test 5 word 1 - original"), text("test 5 word 2 - original")))
+    val vdom5_b = tag("div", Seq(cls := Some("surroundme2")),
+      tag("p", text("success! test 5 new line 1")), tag("p", text("success! test 5 new line 2")))
 
     val patch5 = diff(empty, vdom5_a)
     run(patch5(target5)).foreach { n =>
@@ -75,25 +75,25 @@ object Test extends JSApp {
 
     // Test patching via a one level path
     val target5aa = document.getElementById("test5a")
-    val vdom5aa = vnode("div", Seq(cls := Some("surroundme")), text("testa success on path!"))
+    val vdom5aa = tag("div", Seq(cls := Some("surroundme")), text("testa success on path!"))
     val patch5aa = PathPatch(InsertPatch(vdom5aa), Nil)
     run(patch5aa(target5aa))
 
     // Test patching a child
     val target5ab = document.getElementById("test5b_parent")
-    val vdom5ab = vnode("div", Seq(cls := Some("surroundme")), text("test5b success on path!"))
+    val vdom5ab = tag("div", Seq(cls := Some("surroundme")), text("test5b success on path!"))
     // Adds a path two different ways
     val patch5ab = RemovePatch.applyTo(Seq(0)) andThen PathPatch(InsertPatch(vdom5ab))
     run(patch5ab(target5ab))
 
     val target6 = document.getElementById("test6")
-    val vdom6a = vnode("div", "key1", Seq(id := "willbedropped", cls := "surroundme"),
-      vnode("p", text("test 6 line 1")),
-      vnode("p", text("test 6 line 2")))
-    val vdom6b = vnode("div", "key1", Seq(cls := Some("surroundme2")),
-      vnode("p", text("success! test 6 line 1")),
-      vnode("span", text("***")),
-      vnode("p", text("success! test 6 line 2")))
+    val vdom6a = tag("div", "key1", Seq(id := "willbedropped", cls := "surroundme"),
+      tag("p", text("test 6 line 1")),
+      tag("p", text("test 6 line 2")))
+    val vdom6b = tag("div", "key1", Seq(cls := Some("surroundme2")),
+      tag("p", text("success! test 6 line 1")),
+      tag("span", text("***")),
+      tag("p", text("success! test 6 line 2")))
 
     // patch between two vdom trees
     val patch6b = diff(vdom6a, vdom6b)
@@ -121,7 +121,7 @@ object Test extends JSApp {
         border := "1px solid red",
         width := s"${100 + 5 * count}px",
         height := s"${100 + 2 * count}px")
-      vnode("div", Some("box"), s, text(count.toString))
+      tag("div", Some("box"), None, s, text(count.toString))
     }
 
     var count = 0
@@ -178,7 +178,7 @@ object Test extends JSApp {
     //
     import SVGAttributes._
     val target8 = document.getElementById("test8")
-    val svg8 = svg(Seq(), vnode("rect", None, Some(Constants.NS.SVG),
+    val svg8 = svg(Seq(), tag("rect", None, Some(Constants.NS.SVG),
       Seq(x := "30", width := "40", height := "10",
         stroke := "#00cc00", fill := "#006600", width := "100", height := "20")))
     val new8 = run(InsertPatch(svg8)(target8))
@@ -192,7 +192,7 @@ object Test extends JSApp {
     d.on("click", (d: dom.Event, t: dom.EventTarget) => {
       println(s"click event capture: $d, $t")
       true
-    }).root(Some(target9))
+    }).delegate.root(Some(target9))
 
     import UIEvents._
 
@@ -208,7 +208,7 @@ object Test extends JSApp {
     var button10: Future[dom.Node] = Future(null)
     var tree10: VNode = null
  
-    def create10(count: Int): VNode = vnode("div", vnode("button",
+    def create10(count: Int): VNode = tag("div", tag("button",
       // When clicked, re-render...
       Seq(click ~~> ((d: dom.Event) => {
         count10 += 1
