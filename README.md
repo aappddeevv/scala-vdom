@@ -24,7 +24,7 @@ Backend specific UI widget set, such as the browser DOM.
 * Patch: A recipe that describes how to change one VDom into another VDom. The recipe
 sometimes uses a VDom instance to conveniently collect together the arguments for
 describing the change but it is conceptually independent on the VDom layer.
-* IOAction: A monad that exuecutes side effects. Applying a Patch to a Backend specific
+* IOAction: A monad that executes side effects. Applying a Patch to a Backend specific
 object is considered a side-effect.
 * Backend: A UI environment specific object that knows how to render a VNode, take
 a patch and create a side-effecting action specific to a UI environment. It also
@@ -51,7 +51,7 @@ VNode trees can be created in multiple ways:
 application specific logic to customize the VDom tree to reflect changes in application state.
 * Creating a singe VNode tree then using a lens (shapeless, scalaz, monacle) to mutate
 the tree.
-* Using a more friendly API such as scalatags. Scalatags needs to configured to
+* Using a more friendly API such as scalatags. Scalatags needs to be configured to
 generate VDom objects instead of text or DOM objects.
 * Use a ThinkNode (a VNode subclass) which allows you to generate VNodes from within
 the tree rather than external to it.
@@ -59,7 +59,7 @@ the tree rather than external to it.
 The VNode class hierarchy is sealed and cannot be extended.
 
 ## Patching
-Patching is the process of updating a DOM node. The updates can be calculated a number
+Patching is the process of updating a DOM node. The updates can be calculated in a number
 of different ways depending on your application.
 
 * Through the `diff(original, target)` method. The diff method applies an 
@@ -88,7 +88,7 @@ of diff computation issues a patch to create a node.
 
 The second level is at the node level. The diff algorithm will run a node level diff
 if the VNodes are the same type. Each VNode knows how to diff with an object of the
-same class but not with objets of another VNode class. This allows the diff logic to
+same class but not with objects of another VNode class. This allows the diff logic to
 be concentrated in the VNode class.
 
 The diff algorithm tries to find the smallest and/or most efficient set of Patches
@@ -110,7 +110,7 @@ changes.
 Most vdom libraries allow you to set attributes and properties on a javascript object. Technically
 all values that can be specified on an element are either approved attributes (like `id`) or 
 customer attributes specified by `aria-` or `data-`. Other key-value pairs are not technically
-allowed as  attributes in HTML, specifically the markup. However, when programmin the DOM using
+allowed as attributes in HTML, specifically the markup. However, when programming the DOM using
 javascript, some attribuse are set when their
 object properties are set e.g. `myHTMLElement[id] = 'foo'` actually sets the `id` attribute
 as if `myHTMLElement.setAttribute('id', 'foo')` had been called.
@@ -124,7 +124,7 @@ instead of `setAttribute` for some attributes to improve cross-browser compatibi
 ## Handling Events
 
 This is currently a gap in the library as I am still researching what to do for events. It 
-seems that attaching directly to a DOm object may be Ok but some virtual dom libraries
+seems that attaching directly to a Dom object may be Ok but some virtual dom libraries
 attach to the top of the tree.
 
 There are multiple ways to handle events.
@@ -132,8 +132,8 @@ There are multiple ways to handle events.
 * You can use a delegate model
   with the ability to manage events that occur further down in the tree.
   To use this approach you need a way to "select" when a handler is fired
-  from a sub-node. This event handling model help improve performance in
-  some cases and hurt performance in others.
+  from a sub-node. This event handling model helps improve performance in
+  some cases and hurts performance in others.
 * Or you can attach directly to a node and have a callback per event type
   as needed.
 * Or you can lift all events into an event queue and wrap all events like
@@ -142,12 +142,12 @@ There are multiple ways to handle events.
 run.
  
 It appears that there are advantages for each approach and there
-is evidence is that for some events, like "error", you need to attach
+is evidence that for some events, like "error", you need to attach
 directly to the element that generates the error because the "error"
 event type does not bubble. In other words, to smooth over the DOM event
-handling bumps, you have alot of work ahead of you.
+handling bumps, you have a lot of work ahead of you.
 
-There is also the issues of debouncing, where multiple similar events
+There is also the issue of debouncing, where multiple similar events
 are compressed into one in order to avoid race conditions between
 events and UI activity.
 
@@ -214,7 +214,7 @@ flow the hooks into the IOActions via monadic computations.
 
 ## Browser Support
 
-It is known that this does not support IE8, too many exceptions and issues with Internet Explorer. It's possible that more modern versions of IE may work Ok. Overtime, we may be able to provide better support to various generations of IE, but it appears to be very difficult to do so.
+It is known that this does not support IE8, too many exceptions and issues with Internet Explorer. It's possible that more modern versions of IE may work Ok. Over time, we may be able to provide better support to various generations of IE, but it appears to be very difficult to do so.
 
 ## Issues
 There are many issues that currently make this library unusable for production use. These 
@@ -226,11 +226,11 @@ together in some cases. The general rule is to avoid adjacent text nodes in your
 * No support is provided for events.
 * The presence of the correct ExceutionContext still needs to be traced and worked out so that
 it can always be specified by the programmer.
-* Should diff'ing and rendering have future return values to allow them to be async by default?
+* Should diff'ing and rendering have Future return values to allow them to be async by default?
 Not sure this makes sense in every backend environment. Can't the programmer just wrap it into
-a future themselves if they want it async? There *are* side effects for rendering, potentially,
+a Future themselves if they want it async? There *are* side effects for rendering, potentially,
 but probably not diff'ing.
-* I've not take the time to add more attributes to the set and adding your own attributes
+* I've not taken the time to add more attributes to the set and adding your own attributes
 with custom hints is not easy at the moment, you have to create your own Backend object.
  
 ## Other Virtual DOM implementations
