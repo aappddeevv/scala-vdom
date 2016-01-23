@@ -16,7 +16,8 @@
 package org.im
 package vdom
 
-import monifu.reactive.Observable
+import monifu.reactive._
+
 package object reactive {
 
   import scala.concurrent.duration._
@@ -29,38 +30,7 @@ package object reactive {
   import scala.collection.mutable.ArrayBuffer
   
   implicit class EnhancedObservable[T](source: Observable[T]) {
-
-    /** Sliding window of size n. */
-    def window(n: Int): Observable[Seq[T]] = Observable.create[Seq[T]] { subscriber =>
-      implicit val s = subscriber.scheduler
-      val observer = subscriber.observer
-
-      val sourceSubscriber = new monifu.reactive.Observer[T] {
-        private[this] var buffer = ArrayBuffer.empty[T]
-
-        def onNext(elem: T): Future[Ack] = {
-          buffer.append(elem)
-          if (buffer.size == n) {
-            val oldBuffer = buffer
-            buffer = buffer.drop(1)
-            observer.onNext(oldBuffer)
-          }
-          Ack.Continue
-        }
-
-        def onError(ex: Throwable): Unit = observer.onError(ex)
-
-        def onComplete(): Unit = {
-          if (buffer.size > 0) {
-            observer.onNext(buffer)
-            buffer = null
-          }
-          observer.onComplete()
-        }
-      }
-
-      source.subscribe(sourceSubscriber)(s)
-    }
+    def slidingWindow(n: Int): Observable[Seq[T]] = source.whileBusyBuffer(OverflowStrategy.Unbounded).buffer(n, 1)
   }
 
 }

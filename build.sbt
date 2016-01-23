@@ -25,7 +25,7 @@ lazy val vdom = crossProject.in(file(".")).
   settings(EclipseKeys.useProjectId := true).
 
   jvmSettings(libraryDependencies ++= Seq("org.scalatest" %% "scalatest" % "latest.release" % "test",
-	 "org.scalacheck" %% "scalacheck" % "1.12.4" % "test")).
+	 "org.scalacheck" %% "scalacheck" % "latest.release" % "test")).
 
   jsSettings(
     libraryDependencies ++= Seq("org.scala-js" %%% "scalajs-dom" % "latest.release"),
@@ -47,7 +47,7 @@ lazy val component = (project in file("component")).
 lazy val reactive = (project in file("reactive")).
   dependsOn(vdomJS).
   settings(commonSettings: _*).
-  settings(libraryDependencies += "org.monifu" %%% "monifu" % "1.0-M1").
+  settings(libraryDependencies += "org.monifu" %%% "monifu" % "latest.release").
   enablePlugins(ScalaJSPlugin).
   settings(
     persistLauncher := true,

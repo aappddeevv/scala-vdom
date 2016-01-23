@@ -47,7 +47,7 @@ import monifu.reactive.Ack.Continue
  * Derived from: https://github.com/staltz/mvi-example.
  */
 object Test extends JSApp {
-
+  
   // Get an element by name.
   def elementById[A <: js.Any](id: String): A =
     document.getElementById(id).asInstanceOf[A]
@@ -67,8 +67,8 @@ object Test extends JSApp {
     root.foreach(container.appendChild(_))
     vtree.
       startWith(empty).
-      window(2).
-      subscribe(new Observer[Seq[VNode]] {
+      slidingWindow(2).
+      subscribe(new monifu.reactive.Observer[Seq[VNode]] {
         def onNext(els: Seq[VNode]): Future[Ack] = {
           val oldTree = els(0)
           val newTree = els(1)
@@ -138,7 +138,7 @@ object Test extends JSApp {
   def main(): Unit = {
     // Dance around circular dependency issues    
     val placeholder = PublishSubject[ModelType]()
-    val channel = SubjectChannel(placeholder)
+    val channel = SubjectChannel(placeholder, OverflowStrategy.Unbounded)
 
     val (vtree, clicks) = view(placeholder)
     val Intent = intent(clicks)

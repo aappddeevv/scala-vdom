@@ -71,8 +71,7 @@ trait AttributeComponent { self: DOMAttrHints with DelegateComponent with Cleanu
    * the handler is None, removes the event type handler but leaves the Delegate.
    * Skips adding the handler if it already has been attached.
    *
-   * The Delegate should be removed as part of cleanup activity. This is not
-   * orchestrated in this method.
+   * An action is added to remove the Delegate as part of a cleanup activity.
    */
   protected def handler(node: dom.Node, kv: KeyValue[FunctionValue]): Unit = {
     import events._
