@@ -46,6 +46,8 @@ case class ElHint(
  *  Some of these hints are only relevant with certain backends,
  *  such as the DOM backend e.g. MustUseProperty. Some, are
  *  related to multiple backends, such as HasPositiveNumericValue.
+ *  
+ *  Hints can be combined through '+'.
  */
 object Hints {
 

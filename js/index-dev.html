@@ -35,7 +35,7 @@
 
 </head>
 <body>
-	<table>
+	<table id="vdomtest">
 		<tr>
 			<td><p id="test1">test1</p></td>
 		</tr>
@@ -104,10 +104,21 @@
 					<div id="test10button"></div>
 				</div></td>
 		</tr>
-
 	</table>
-	<script type="text/javascript"
-		src="./target/scala-2.11/vdom-jsdeps.js"></script>
+
+	<div id="delegatestest">
+		<table>
+			<tr>
+				<td>
+					<div id="test200">
+						<input type="button" text="Click Me!"></input>
+					</div>
+				</td>
+			</tr>
+		</table>
+	</div>
+
+	<script type="text/javascript" src="./target/scala-2.11/vdom-jsdeps.js"></script>
 	<script type="text/javascript"
 		src="./target/scala-2.11/vdom-fastopt.js"></script>
 	<script type="text/javascript"

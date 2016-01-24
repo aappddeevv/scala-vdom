@@ -179,6 +179,10 @@ trait DOMRendererComponent extends RendererComponent {
  * convert Patches to PatchPerformers.
  *
  * In here be dragons.
+ * 
+ * I'm not sure that we need to link the vnode to the dom node as the
+ * events delegate and cleanup queues are independent of the vnode and
+ * the linkage is not needed for those two areas.
  */
 trait DOMPatchesComponent extends PatchesComponent {
   self: BasicDOMBackend with DOMRendererComponent with AttributeComponent with CleanupActions =>
@@ -186,7 +190,7 @@ trait DOMPatchesComponent extends PatchesComponent {
   type PatchInput = dom.Node
   type PatchOutput = dom.Node
 
-  /** An action that links a VNode to a dom.Node. Runs cleanup actions. Returns dom.Node. */
+  /** An action that unlinks a VNode from a dom.Node. Runs cleanup actions. Returns dom.Node. */
   private def detach(node: dom.Node): IOAction[PatchOutput] = Action.lift {
     DOMEnvironment.unlink(node)
     cleanup(node)
@@ -214,7 +218,6 @@ trait DOMPatchesComponent extends PatchesComponent {
    * to run actions on the object returned from the operation.
    */
   def makeApplicable(patch: Patch)(implicit executor: ExecutionContext): PatchPerformer = {
-
     patch match {
 
       case PathPatch(patch, path) =>
@@ -398,7 +401,7 @@ trait DelegateComponent { self: CleanupActions =>
  * disconnected from the virtual environment or an attribute's value is
  * about to be reset.
  *
- * Cleanup queues are available for the dom.Node as well as each 
+ * Cleanup queues are available for the dom.Node as well as each
  * attibute-named cleanup queues. The attribute nodes are
  * run before the attribute is set to a new value and then the attribute
  * cleanup queue is cleared.
@@ -440,21 +443,21 @@ trait CleanupActions { self: DOMBackend =>
 
   /**
    * Run the cleanup actions for el and named. This is run automatically by the PatchesComponent
-   * at the right time of the lifecycle. Reset queues.
+   * at the right time of the lifecycle. Reset queues. The named queues are run first
+   * then the node level queue.
    */
   def cleanup(node: dom.Node): Unit = {
-    getElQueue(node).fold() { run(_) }
-    node.asInstanceOf[js.Dynamic].__cleanupAction = js.undefined.asInstanceOf[js.Any]
-    
     getNamedQueues(node).fold() { _.values.foreach(run(_)) }
     node.asInstanceOf[js.Dynamic].__namedCleanupActions = js.undefined.asInstanceOf[js.Any]
+    getElQueue(node).fold() { run(_) }
+    node.asInstanceOf[js.Dynamic].__cleanupAction = js.undefined.asInstanceOf[js.Any]
   }
 
   /** Run the cleanup actions for the named queue. */
   def cleanup(name: String, node: dom.Node): Unit = {
     getNamedQueues(node).fold() { _.get(name).foreach(run(_)) }
     // clear only that queue
-    getNamedQueues(node).foreach{ a => setNamed(node, a - name) }
+    getNamedQueues(node).foreach { a => setNamed(node, a - name) }
   }
 
   /**

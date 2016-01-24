@@ -18,12 +18,13 @@ package vdom
 
 import scala.concurrent.duration._
 import scala.concurrent.Await
-import scala.scalajs.js
+import scala.scalajs.js._
 import scala.scalajs.js.JSApp
 import scala.scalajs.js.timers._
 import scala.concurrent.{ Future, ExecutionContext }
-import scala.scalajs.concurrent.JSExecutionContext.Implicits.runNow
+import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import org.scalajs.dom
+import dom._
 import org.scalajs.dom.document
 import org.im.vdom.backend.DOMBackend
 
@@ -34,10 +35,88 @@ object Test extends JSApp {
   import HTML5Attributes._
   import Styles._
   import DOMBackend._ // brings in the core implicits
+  import org.im.events._
+  import events.Handler._
 
   def main(): Unit = {
     println("test of scala-vdom")
 
+    val vdom = document.getElementById("vdomtest")
+    if (vdom != null)
+      vdomTest()
+
+    val delegate = document.getElementById("delegatetest")
+    if (delegate != null)
+      delegateTest()
+
+  }
+
+  def delegateTest() = {
+    println("starting delegate test")
+
+    val test1: UndefOr[Element] = document.getElementById("test1target")
+    test1.foreach { el =>
+      println("attaching test1target click handler")
+      var test1counter = 0
+      val d = Delegate()
+      // add a handler
+      d.on("click", (event, node) =>
+        {
+          println(s"test1target clicked $test1counter")
+          test1counter += 1
+          true
+        })
+      // attach it
+      d.root(Some(el))
+    }
+
+    val test2: UndefOr[Element] = document.getElementById("test2target")
+    var test2counter = 0
+    test2.foreach { el =>
+      println("attaching test2target mouse over handler")
+      val d = Delegate(Some(el))
+      d.on("mouseover", (event, node) => {
+        println(s"test2target mouseover $test2counter")
+        test2counter += 1
+        true
+      })
+    }
+
+    val test3a: UndefOr[Element] = document.getElementById("test3targeta")
+    val test3b: UndefOr[Element] = document.getElementById("test3targetb")
+    test3a.foreach { el =>
+      println("attaching test3target resetting root")
+      var test3counter = 0
+      val d = Delegate()
+      d.on("click", (event, node) => {
+        println(s"test3target clicked $test3counter")
+        test3counter += 1
+        true
+      })
+      d.root(Some(el))
+      d.root(None)
+      test3b.foreach { e => d.root(Some(e)) }
+
+    }
+
+    val test4child: UndefOr[Element] = document.getElementById("test4child")
+    val test4parent: UndefOr[Element] = document.getElementById("test4parent")
+    test4child.foreach { el =>
+      require(test4parent.isDefined)
+      var test4counter = 0
+      println("attaching test4target - upward bubbling but with child id matcher")
+      val parentd = new Delegate()
+      parentd.on("mouseover", (event, node) => {
+        println(s"event fired on test4parent due to match on child id $test4counter")
+        test4counter += 1
+        false
+      }, Matcher.MatchId("test4child"))
+      test4parent.foreach { p => parentd.root(Some(p)) }
+    }
+
+  }
+
+  def vdomTest() = {
     val p1 = TextPatch("test1 succeeded: add text to existing element by replacing text")
     val target = document.getElementById("test1")
     require(target != null)
@@ -129,14 +208,14 @@ object Test extends JSApp {
     var rootNode = run(render(tree))
     rootNode.foreach(target7.appendChild(_)) // manual append
 
-    val cancel = setInterval(1000) {
+    val cancel = timers.setInterval(1000) {
       count += 1
       val newTree = box(count)
       val patch = diff(tree, newTree)
       rootNode.foreach(n => run(patch(n)))
       tree = newTree
     }
-    setTimeout(10 seconds)(clearInterval(cancel))
+    timers.setTimeout(10 seconds)(timers.clearInterval(cancel))
 
     //
     // Compare Test7 to the javascript version from virtual-dom.
@@ -207,21 +286,23 @@ object Test extends JSApp {
     var count10: Int = 0
     var button10: Future[dom.Node] = Future(null)
     var tree10: VNode = null
- 
+
     def create10(count: Int): VNode = tag("div", tag("button",
       // When clicked, re-render...
-      Seq(click ~~> ((d: dom.Event) => {
-        count10 += 1
-        // re-create the virtual tree
-        val newTree = create10(count10)
-        // calculate patch with new virtual tree
-        val patch = diff(tree10, newTree)
-        // apply the patch against the current DOM button and update the real DOM button with the result
-        button10 = button10.flatMap(b => run(patch(b)))
-        // update the previous virtual tree with the new virtual tree
-        tree10 = newTree
-        true
-      })),
+      Seq(click ~~> Handler { (d: dom.Event) =>
+        {
+          count10 += 1
+          // re-create the virtual tree
+          val newTree = create10(count10)
+          // calculate patch with new virtual tree
+          val patch = diff(tree10, newTree)
+          // apply the patch against the current DOM button and update the real DOM button with the result
+          button10 = button10.flatMap(b => run(patch(b)))
+          // update the previous virtual tree with the new virtual tree
+          tree10 = newTree
+          true
+        }
+      }),
       text(s"Click Me - $count")), text(s"You have clicked the button $count10 times!"))
 
     // create the initial virtual button

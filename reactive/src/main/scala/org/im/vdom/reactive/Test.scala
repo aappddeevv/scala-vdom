@@ -18,6 +18,7 @@ package vdom
 package reactive
 
 import scala.scalajs.js.JSApp
+import org.im.events.Handler
 import org.im.vdom._
 import vdom.backend.DOMBackend._
 import VNode._
@@ -118,10 +119,10 @@ object Test extends JSApp {
 
         tag("div", Some("key1"), None, Seq(),
           text(s"count: $count "),
-          tag("button", Some("buttonkey"), None, Seq(click ~~> ((e: dom.Event) => {
+          tag("button", Some("buttonkey"), None, Seq(click ~~> Handler{(e: dom.Event) => {
             clicks.onNext(e)
             true
-          })), text("Click Me!")),
+          }}), text("Click Me!")),
           tag("p", text("Hello World!")),
           tag("ul", Some("ulkey"), None, Seq(),
             listOfThings: _*))

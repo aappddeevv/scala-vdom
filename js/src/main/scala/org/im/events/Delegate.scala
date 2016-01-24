@@ -22,7 +22,7 @@ import org.scalajs.dom
 /**
  * When processing events using a Delegate, Matcher is used to determine if the
  * delegate function should be called on the node in the traversal
- * from the node where the event occured to the Delegate's root.
+ * from the node where the event occurred to the Delegate's root.
  * Return true to allow a Delegate to process the current node in the
  * traversal.
  */
@@ -66,7 +66,7 @@ object Matcher {
   val MatchAll = Matcher { (_, _) => true }
 
   /**
-   * Match on the tage. Current node must be an Element.
+   * Match on the tag. Current node must be an Element.
    */
   def MatchTag(tagName: String) = Matcher {
     (_, _) match {
@@ -113,20 +113,33 @@ object Matcher {
 
 /**
  * A listener receives a dom.Event and the current Node that
- * is allowed to process the event. Return true if the propogation up
- * the tree should continue and false if it should stop.
+ * is allowed to process the event. Return true if the propagation up
+ * the tree should continue and false if it should stop. The handler
+ * is a scala function because the scala machinery eventually
+ * retrieves the handler and executes it.
+ *
+ * Importing Handler into scope brings in some implicits for automatic
+ * conversion to Handler objects.
  */
-trait Handler extends Function2[dom.Event, dom.Node, Boolean]
+trait Handler extends scala.Function2[dom.Event, dom.Node, Boolean]
 
 object Handler {
-  def apply(f: Function2[dom.Event, dom.Node, Boolean]) = new Handler {
+  def apply(f: scala.Function2[dom.Event, dom.Node, Boolean]) = new Handler {
     def apply(event: dom.Event, node: dom.Node) = f(event, node)
   }
 
-  def apply(f: Function1[dom.Event, Boolean]) = new Handler {
+  def apply(f: scala.Function1[dom.Event, Boolean]) = new Handler {
     def apply(event: dom.Event, node: dom.Node) = f(event)
   }
 
+  implicit def toHandler(f: (dom.Event, dom.Node) => Boolean) = Handler(f)
+  implicit def toHandlerUnit(f: (dom.Event, dom.Node) => Unit) = new Handler {
+    def apply(event: dom.Event, node: dom.Node) = {
+      f(event, node)
+      true
+    }
+  }
+  implicit def toHandler1(f: dom.Event => Boolean) = Handler(f)
 }
 
 /**
@@ -140,17 +153,19 @@ private[events] case class QualifiedHandler(handler: Handler, matcher: Matcher =
  * An object that allows a side-effecting call to `cancel`.
  * `delegate` is stuck in there for convienence.
  */
-trait Cancelable { 
+trait Cancelable {
   def cancel: Unit
   def delegate: Delegate
-  }
+}
 
 /**
  * Delegate all event calls on the root to registered handlers.
  * You can change the root object at any time and the handlers
- * are properly deregistered.
+ * are properly deregistered/registered. The delegate is *not*
+ * attached to the DOM element. The calling program should do that
+ * if desired.
  *
- * The approach used is standad logic in java swing programs
+ * The approach used is standard logic in java swing programs
  * with jgoodies.
  *
  * @see [UI EVents](http://www.w3.org/TR/DOM-Level-3-Events/#interface-EventListener)
@@ -175,9 +190,11 @@ case class Delegate(private[events] var root: Option[dom.EventTarget] = None,
   @js.annotation.JSExport
   protected def handler(event: dom.Event): Unit = {
 
+    import js.DynamicImplicits.truthValue
+    
     // If a special marker is found, other instances of Delegate 
     // found up the chain should ignore this event as well.
-    if (js.DynamicImplicits.truthValue(event.asInstanceOf[js.Dynamic].__DELEGATEIGNORE))
+    if (truthValue(event.asInstanceOf[js.Dynamic].__DELEGATEIGNORE))
       return
 
     var target =
@@ -187,10 +204,16 @@ case class Delegate(private[events] var root: Option[dom.EventTarget] = None,
       }
 
     // Build a listener list to process based on the event type and phase...
-    val phase = event.eventPhase
+    // If eventPhase is defined, use it, otherwise, determine it from the targets...
+    val phase =
+      if(truthValue(event.eventPhase.asInstanceOf[js.Dynamic])) event.eventPhase
+      else if(event.target != event.currentTarget) 3 // bubbling
+      else 2 // at target
+        
+    // filter registered handlers based on whether they are for capture and the processing phase.
     val registeredHandlers = handlers.getOrElse(event.`type`, Set.empty).filter { qhandler =>
-      if (!qhandler.capture && (phase == 2 || phase == 3)) true
-      else if (qhandler.capture && (phase == 1 || phase == 2)) true
+      if (qhandler.capture && (phase == 1 || phase == 2)) true
+      else if (!qhandler.capture && (phase == 2 || phase == 3)) true
       else false
     }
 
@@ -238,6 +261,7 @@ case class Delegate(private[events] var root: Option[dom.EventTarget] = None,
   }
 
   protected def stopListeningTo(el: dom.EventTarget): Unit = {
+    require(el != null)
     val stops = collection.mutable.ListBuffer[(String, QualifiedHandler)]()
     for {
       et <- handlers.keys
@@ -245,11 +269,12 @@ case class Delegate(private[events] var root: Option[dom.EventTarget] = None,
       ql <- setOfQL
     } { stops += ((et, ql)) }
     stops.foreach { p =>
-      el.removeEventListener(p._1, handler _, p._2.capture) 
-      }
+      el.removeEventListener(p._1, handler _, p._2.capture)
+    }
   }
 
   protected def startListeningTo(el: dom.EventTarget): Unit = {
+    require(el != null)
     for {
       et <- handlers.keys
       setOfQL <- handlers.get(et)
@@ -262,7 +287,7 @@ case class Delegate(private[events] var root: Option[dom.EventTarget] = None,
   /**
    * Turn off listening for events for a specific eventType. Individual
    * handlers should be cancelled using the Cancelable returned from `on`.
-   * 
+   *
    * @param eventType The event type or None indicating all handlers for all event types.
    */
   def off(eventType: Option[String] = None): Delegate = {
@@ -289,7 +314,7 @@ case class Delegate(private[events] var root: Option[dom.EventTarget] = None,
 
   /**
    * Add a handler for a specific event. The same handler can be added multiple times.
-   * 
+   *
    * @return A Cancelable used to cancel the listening of the handler.
    */
   def on(eventType: String,
@@ -313,10 +338,10 @@ case class Delegate(private[events] var root: Option[dom.EventTarget] = None,
 
     new Cancelable {
       private val _eventType = eventType
-      private val _qhandler = qhandler      
+      private val _qhandler = qhandler
       def cancel: Unit = {
         handlers.get(_eventType).foreach(_.remove(_qhandler))
-        if(handlers.get(_eventType).map(_.size).getOrElse(0)>0) {
+        if (handlers.get(_eventType).map(_.size).getOrElse(0) > 0) {
           // no need to listen to this event type, no handlers
           root.foreach(_.removeEventListener(_eventType, self.handler _, capture))
         }
