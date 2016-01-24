@@ -18,15 +18,5 @@ package org.im
 import org.scalajs.dom
 
 package object events {
-
-  /**
-   * EventTarget could be a Node or a Window.
-   */
-  implicit def func2Handler(f: Function2[dom.Event, dom.EventTarget, Boolean]) = Handler { f }
-
-  /**
-   * Simple handler that only takes the Event object.
-   */
-  implicit def func1Handler(f: Function1[dom.Event, Boolean]) = Handler { f }
-
+  
 }

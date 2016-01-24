@@ -36,7 +36,8 @@ object Test extends JSApp {
   import Styles._
   import DOMBackend._ // brings in the core implicits
   import org.im.events._
-  import events.Handler._
+  import events.Handler
+  import Handler.Implicits._
 
   def main(): Unit = {
     println("test of scala-vdom")

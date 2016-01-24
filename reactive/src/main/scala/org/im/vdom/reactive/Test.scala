@@ -19,6 +19,7 @@ package reactive
 
 import scala.scalajs.js.JSApp
 import org.im.events.Handler
+import Handler.Implicits._
 import org.im.vdom._
 import vdom.backend.DOMBackend._
 import VNode._

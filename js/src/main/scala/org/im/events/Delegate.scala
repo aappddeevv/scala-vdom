@@ -118,11 +118,14 @@ object Matcher {
  * is a scala function because the scala machinery eventually
  * retrieves the handler and executes it.
  *
- * Importing Handler into scope brings in some implicits for automatic
- * conversion to Handler objects.
  */
 trait Handler extends scala.Function2[dom.Event, dom.Node, Boolean]
 
+/**
+ * Importing Handler.Implicits into scope brings in some implicits for automatic
+ * conversion of scala functions to Handler objects.
+ *
+ */
 object Handler {
   def apply(f: scala.Function2[dom.Event, dom.Node, Boolean]) = new Handler {
     def apply(event: dom.Event, node: dom.Node) = f(event, node)
@@ -132,14 +135,16 @@ object Handler {
     def apply(event: dom.Event, node: dom.Node) = f(event)
   }
 
-  implicit def toHandler(f: (dom.Event, dom.Node) => Boolean) = Handler(f)
-  implicit def toHandlerUnit(f: (dom.Event, dom.Node) => Unit) = new Handler {
-    def apply(event: dom.Event, node: dom.Node) = {
-      f(event, node)
-      true
+  object Implicits {
+    implicit def toHandler(f: (dom.Event, dom.Node) => Boolean) = Handler(f)
+    implicit def toHandlerUnit(f: (dom.Event, dom.Node) => Unit) = new Handler {
+      def apply(event: dom.Event, node: dom.Node) = {
+        f(event, node)
+        true
+      }
     }
+    implicit def toHandler1(f: dom.Event => Boolean) = Handler(f)
   }
-  implicit def toHandler1(f: dom.Event => Boolean) = Handler(f)
 }
 
 /**
@@ -191,7 +196,7 @@ case class Delegate(private[events] var root: Option[dom.EventTarget] = None,
   protected def handler(event: dom.Event): Unit = {
 
     import js.DynamicImplicits.truthValue
-    
+
     // If a special marker is found, other instances of Delegate 
     // found up the chain should ignore this event as well.
     if (truthValue(event.asInstanceOf[js.Dynamic].__DELEGATEIGNORE))
@@ -206,10 +211,10 @@ case class Delegate(private[events] var root: Option[dom.EventTarget] = None,
     // Build a listener list to process based on the event type and phase...
     // If eventPhase is defined, use it, otherwise, determine it from the targets...
     val phase =
-      if(truthValue(event.eventPhase.asInstanceOf[js.Dynamic])) event.eventPhase
-      else if(event.target != event.currentTarget) 3 // bubbling
+      if (truthValue(event.eventPhase.asInstanceOf[js.Dynamic])) event.eventPhase
+      else if (event.target != event.currentTarget) 3 // bubbling
       else 2 // at target
-        
+
     // filter registered handlers based on whether they are for capture and the processing phase.
     val registeredHandlers = handlers.getOrElse(event.`type`, Set.empty).filter { qhandler =>
       if (qhandler.capture && (phase == 1 || phase == 2)) true
