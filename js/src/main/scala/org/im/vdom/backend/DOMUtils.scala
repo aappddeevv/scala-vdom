@@ -71,7 +71,8 @@ trait DOMUtils {
 
 /**
  * Link VNodes and DOM Nodes. This can be implemented either in a global map
- * or by sticking the vnode into the DOM node using a secret property.
+ * or by sticking the vnode into the DOM node using a secret property. The
+ * secret property is `__vnode`.
  *
  * Note: truthy test: js.DynamicImplicits.truthValue(self._map.asInstanceOf[js.Dynamic])
  */

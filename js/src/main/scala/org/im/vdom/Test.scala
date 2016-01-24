@@ -27,6 +27,7 @@ import org.scalajs.dom
 import dom._
 import org.scalajs.dom.document
 import org.im.vdom.backend.DOMBackend
+import UIEvents._
 
 object Test extends JSApp {
 
@@ -113,6 +114,36 @@ object Test extends JSApp {
         false
       }, Matcher.MatchId("test4child"))
       test4parent.foreach { p => parentd.root(Some(p)) }
+    }
+
+    val test5target: UndefOr[Element] = document.getElementById("test5target")
+    val test5input: UndefOr[Element] = document.getElementById("test5input")
+    test5target.foreach { el =>
+      require(test5input != null)
+
+      val vnodeB = tag("div", tag("p", text("Clicked!")))
+      val vnodeA = tag("div", tag("button",
+        Seq(click ~~> Handler { (d: dom.Event) =>
+          {
+            // Create a replacement for this node when clicked, should force
+            // cleanup actions to be called.
+            val node = d.target
+            test5input.foreach { pnode =>
+              // cheat, run a remove patch for convenience
+              run(RemovePatch.applyTo(Seq(0))(pnode))
+              // then just add this by hand not using patch, just to confuse you!
+              run(InsertPatch(vnodeB)(pnode))
+            }
+            true
+          }
+        }), text("Click Me!")))
+
+      // Create vnodeA and append it to test5input
+      // Add an artificial cleanup action to test cleanup actions being attached and called. 
+      test5input.foreach { pnode =>
+        val newNode = run(InsertPatch(vnodeA)(pnode))
+        newNode.foreach(addCleanupAction(_, Action.lift { println("Cleanup occurred!") }))
+      }
     }
 
   }
@@ -273,8 +304,6 @@ object Test extends JSApp {
       println(s"click event capture: $d, $t")
       true
     }).delegate.root(Some(target9))
-
-    import UIEvents._
 
     //
     // Test 10 - button that has a callback which updates the vdom

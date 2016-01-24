@@ -42,7 +42,7 @@ trait Defaults {
 object Defaults extends Defaults
 
 /**
- * KeyValues that hold functions actually a few pieces of function configuration
+ * KeyValues that holds a few pieces of function configuration
  * information relevant to calling a handler when a dom.Event is fired.
  */
 case class FunctionValue(handler: events.Handler, matcher: events.Matcher = events.Matcher.MatchRoot,
@@ -59,6 +59,9 @@ case class FunctionKey(val name: String) extends KeyPart { self =>
   def ~~>(v: FunctionValue) = KeyValue[FunctionValue](self, Some(v))
 }
 
+/**
+ * Convenience class to allow you to define a FunctionKey using '"keyname".func`.
+ */
 class RichFuncString(val name: String) {
   def func = FunctionKey(name)
 }

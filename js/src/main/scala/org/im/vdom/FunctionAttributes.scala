@@ -18,6 +18,10 @@ package vdom
 
 import scala.language._
 
+/**
+ * DOM events. If you can define your own convenience methods for defining methods and import
+ * those into scope.
+ */
 trait UIEvents {
   implicit class FunctionToKey(eventType: String) extends RichFuncString(eventType)
   val abort = "abort".func
