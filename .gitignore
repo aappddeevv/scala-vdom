@@ -8,3 +8,5 @@ bin
 .idea
 .cache*
 *.iml
+*.sjsir
+*.class

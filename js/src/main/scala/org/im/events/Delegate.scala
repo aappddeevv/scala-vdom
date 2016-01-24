@@ -187,8 +187,12 @@ case class Delegate(private[events] var root: Option[dom.EventTarget] = None,
   /**
    * Handle an event. This is the universal listener attached
    * to the root. A mechanism is in place to not process an event
-   * when it crosses to different Delegate instances that may have
-   * attached handlers up the tree.
+   * when it crosses to a different Delegate instances that may have
+   * attached handlers further up the tree and the event has been
+   * marked to be ignored by delegate processing.
+   * 
+   * Handlers can return a false value to indicate that delegates
+   * should ignore the event.
    *
    * @see [eventPhase](https://developer.mozilla.org/en-US/docs/Web/API/Event/eventPhase)
    */
@@ -257,6 +261,8 @@ case class Delegate(private[events] var root: Option[dom.EventTarget] = None,
 
   /**
    * Apply this configured Delegate to the root and return a new Delegate.
+   * You can attach to the root `Document.documentElement` to listen to
+   * events globally.
    */
   def root(el: Option[dom.EventTarget]): Delegate = {
     root.foreach(stopListeningTo(_))
