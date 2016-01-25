@@ -23,11 +23,11 @@ import org.scalatest._
  * just a dummy test class.
  */
 class VNodeSpec extends FlatSpec
-    with Assertions
     with Matchers
     with OptionValues
     with prop.PropertyChecks {
 
+  //import Matchers._
   import vdom.VNode._
 
   "VNode" should "have equals that works" in {
@@ -158,13 +158,12 @@ class VNodeSpec extends FlatSpec
     val lhs = Seq(text("t"))
     assertResult(1)(VNodeUtils.findRemovesCloseEnough(lhs, Seq.empty).size)
   }
-  
+
   it should "find 1 remove when the target has 1 el different from the source" in {
     val rhs = Seq(text("tnew"))
     val lhs = Seq(text("told"))
     assertResult(1)(VNodeUtils.findRemovesCloseEnough(lhs, rhs).size)
   }
-
 
   "findAdds" should "find adds in easy vnode list" in {
     val rhs = Seq(text("t1"), text("t2"), text("t3"))

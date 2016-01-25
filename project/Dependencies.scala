@@ -8,7 +8,7 @@ object Dependencies {
 
   //val frontendDeps = Seq("org.scala-js" %%% "scalajs-dom" % "0.8.1")
 
-  val scalatest = "org.scalatest" %% "scalatest" % "latest.release"
+  val scalatest = "org.scalatest" %% "scalatest" % "3.0.0-M15"
 
   //val scalaJsDependencies = Seq("org.scala-js" %%% "scalajs-dom" % "0.8.1")
   

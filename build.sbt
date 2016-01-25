@@ -11,6 +11,7 @@ lazy val commonSettings = Seq(
 
 lazy val commonScalaJvmOptions = Seq("-Xlint", "-deprecation", "-Xfatal-warnings", "-feature")
 
+
 lazy val root = (project in file(".")).
   aggregate(vdomJS, vdomJVM, component, reactive).
   settings(name := "scala-vdom").
@@ -24,11 +25,12 @@ lazy val vdom = crossProject.in(file(".")).
   settings(commonSettings: _*).
   settings(EclipseKeys.useProjectId := true).
 
-  jvmSettings(libraryDependencies ++= Seq("org.scalatest" %% "scalatest" % "latest.release" % "test",
+  jvmSettings(libraryDependencies ++= Seq("org.scalatest" %%% "scalatest" % "3.0.0-M15" % "test",
 	 "org.scalacheck" %% "scalacheck" % "latest.release" % "test")).
 
   jsSettings(
-    libraryDependencies ++= Seq("org.scala-js" %%% "scalajs-dom" % "latest.release"),
+	jsDependencies += RuntimeDOM,	
+    libraryDependencies ++= Seq("org.scala-js" %%% "scalajs-dom" % "latest.release", "org.scalatest" %%% "scalatest" % "3.0.0-M15" % "test"),
     persistLauncher := true,
     scalaJSStage in Global := FastOptStage
   )

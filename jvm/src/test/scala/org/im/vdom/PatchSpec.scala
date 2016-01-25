@@ -19,18 +19,17 @@ package vdom
 import org.scalatest._
 
 /**
- * Patches do not need much testing...so this is really
- * just a dummy test class.
+ * Patch object testing. Patches are just simple domain classes
+ * so there is not much to test.
  */
 class PatchSpec extends FlatSpec
-    with Assertions
     with Matchers
     with OptionValues {
 
   "Patch" should "have only one EmptyPatch" in {
     assertResult(EmptyPatch)(EmptyPatch)
   }
-  
+
   it should "not need arguments for RemovePatch" in {
     assert(RemovePatch != null)
   }
