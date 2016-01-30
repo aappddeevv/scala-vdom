@@ -25,7 +25,9 @@ Backend specific UI widget set, such as the browser DOM.
 sometimes uses a VDom instance to conveniently collect together the arguments for
 describing the change but it is conceptually independent on the VDom layer.
 * IOAction: A monad that executes side effects. Applying a Patch to a Backend specific
-object is considered a side-effect.
+object is considered a side-effect. In DOM speak, patching a DOM that removes then
+inserts a new DOM element is considered a side-effect. You can build up a list
+of actions to apply to the DOM then apply them all at once.
 * Backend: A UI environment specific object that knows how to render a VNode, take
 a patch and create a side-effecting action specific to a UI environment. It also
 knows how to run an IOAction.
@@ -121,6 +123,15 @@ programming design of a specific library or are set using index notation as a sh
 of using the `setAttribute` methods. The HTML specs actually suggest using the index notation
 instead of `setAttribute` for some attributes to improve cross-browser compatibility. 
 
+## Node Queues
+Instead of making a library specific hack around cleaning up the DOM when the DOM
+is updated (and elements potentially removed), scala-vdom has a cleanup queue
+that is added to each node that holds IOActions that are run when cleanup
+is requested by scala-vdom. You can use the same mechanism to add hooks that
+are run when attribute values are changed or a DOM node is removed from the DOM.
+React essentially has these but it was very hard to figure this out from the React
+code.
+
 ## Handling Events
 
 This is currently a gap in the library as I am still researching what to do for events. It 
@@ -151,7 +162,7 @@ There is also the issue of debouncing, where multiple similar events
 are compressed into one in order to avoid race conditions between
 events and UI activity.
 
-For the time being, will just copy [ftdomdelegate](https://github.com/ftlabs/ftdomdelegate)
+For the time being, I'll just copy the concepts from [ftdomdelegate](https://github.com/ftlabs/ftdomdelegate)
 except make "delegate module" objects immutable. There may be a sprinkling of influence from
 [jsaction](https://github.com/google/jsaction.git). Like jaction, it would
 be nice to make this all string oriented with a dynamic dispatch
@@ -217,13 +228,13 @@ flow the hooks into the IOActions via monadic computations.
 It is known that this does not support IE8, too many exceptions and issues with Internet Explorer. It's possible that more modern versions of IE may work Ok. Over time, we may be able to provide better support to various generations of IE, but it appears to be very difficult to do so.
 
 ## Issues
-There are many issues that currently make this library unusable for production use. These 
+There are many issues that currently make this library less than ideal for use. These 
 issues will be resolved in future releases.
 
-* There are no optimizations in the diff'ing algorithm. It's a straight diff of the entire tree.
+* There are very few optimizations in the diff'ing algorithm. It's a straight diff of the entire tree.
 * Adjacent VText nodes have bad behavior when rendered in the DOM. Browsers merge text nodes
 together in some cases. The general rule is to avoid adjacent text nodes in your virtual dom.
-* No support is provided for events.
+* Support is provided for events through a Delegate procedure, but I would like to improve it.
 * The presence of the correct ExceutionContext still needs to be traced and worked out so that
 it can always be specified by the programmer.
 * Should diff'ing and rendering have Future return values to allow them to be async by default?
@@ -232,7 +243,14 @@ a Future themselves if they want it async? There *are* side effects for renderin
 but probably not diff'ing.
 * I've not taken the time to add more attributes to the set and adding your own attributes
 with custom hints is not easy at the moment, you have to create your own Backend object.
- 
+* Server side rendering. While most vdom libraries other than react do not support this,
+I think its important for a variety of reasons.
+
+So you can use this library as way to construct your application but you will probably
+still have to do some workaround where the library is weak and no support is provided for
+automatic redraw in the spirit of a component approach. I started a component 
+sub-project but have not had time to work on it.
+
 ## Other Virtual DOM implementations
 Here's a list of virtual dom implementations that I looked at:
 
