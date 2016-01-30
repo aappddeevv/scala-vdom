@@ -56,7 +56,6 @@ package object vdom {
     def :=[T](v: T): KeyValue[T] = :=[T](Some(v))
   }
 
- 
   /**
    * Combination of keys and values. A value of None should indicate
    * that something should be unset or removed. What unset or remove
@@ -125,10 +124,35 @@ package object vdom {
    */
   def diff(original: VNode, target: VNode): Patch = Diff.diff(original, target)
 
-
   /**
    * The exception type in this system.
    */
   class VDomException(msg: String, parent: Throwable = null) extends RuntimeException(msg, parent)
 
+  /**
+   * Add a queue to an object for named cleanup IOActions. The actions can be
+   * run by calling `cleanup`.
+   *
+   */
+  trait CleanupActions[T] {
+    /**
+     * Add a cleanup action to run just before an attribute's value is set
+     * to a new value. The specified actions are run after already registered actions.
+     */
+    def addCleanupAction(keyName: String, node: T, action: IOAction[_]*): Unit
+    /**
+     * Add a cleanup action to run after the Node is removed from the DOM.
+     * The specified actions are run after the already registered actions.
+     */
+    def addCleanupAction(node: T, action: IOAction[_]*): Unit
+    /**
+     * Run the cleanup actions for el and named. This is run automatically by the PatchesComponent
+     * at the right time of the lifecycle. Reset queues. The named queues are run first
+     * then the node level queue.
+     */
+    def cleanup(node: T): Unit
+
+    /** Run the cleanup actions for the named queue. */
+    def cleanup(name: String, node: T): Unit
+  }
 }
