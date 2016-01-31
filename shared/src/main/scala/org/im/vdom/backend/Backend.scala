@@ -139,7 +139,9 @@ trait Backend { self =>
 /**
  * Backend rendering of VNodes. Since rendering may involve side effects
  * or asynchronous activities as a VNode is converted into the output,
- * return an IOAction wrapper around the output.
+ * return an IOAction wrapper around the output. Rendering creates
+ * a description of what should be rendered and the actual processing
+ * may be delayed until the rendered value is needed.
  */
 trait RendererComponent { self =>
 
@@ -148,7 +150,12 @@ trait RendererComponent { self =>
    */
   type RenderOutput
 
-  /** Render a VNode producing RenderOutput objects. */
+  /**
+   * Render a VNode producing RenderOutput objects.
+   *
+   *  The action is a recipe and running it multiple times
+   *  could produce different output values.
+   */
   def render(vnode: VNode)(implicit executor: ExecutionContext): IOAction[RenderOutput]
 }
 
@@ -156,18 +163,18 @@ trait RendererComponent { self =>
  * Convert Patches to functions that can be applied to
  * Backend specific elements to create IOActions to be run
  * by the bBackend. Concrete backends will create ways
- * to implicitly create PatchPerformers and 
- * have transparent syntax to run a Patch, but you can 
+ * to implicitly create PatchPerformers and
+ * have transparent syntax to run a Patch, but you can
  * also create a PatchPerformer explicitly so you can
  * add before and after actions to run using IOAction
  * composition.
- * 
+ *
  * PatchInput does not necessary have to be
  * a specific Element type for the visual UI tree, it could
  * be a wrapped object that contains additional information
  * that is used to create the IOAction. For example, it could
  * contain different types of interceptors/callbacks around
- * creating Backend specific elements. 
+ * creating Backend specific elements.
  */
 trait PatchesComponent { self =>
   type PatchInput

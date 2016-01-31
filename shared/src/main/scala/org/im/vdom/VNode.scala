@@ -45,7 +45,11 @@ trait Keyable {
 }
 
 /**
- * Virtual node can be diffed and keyed.
+ * Virtual node can be diffed and keyed. Some virtual dom libraries
+ * like to add hooks (hook and unhook) to be called when the vnode
+ * is associated with an actual DOM node. In this library, there are
+ * no hooks but you can easily compose actions to map into a patch
+ * action and add your hook and unhook logic through composition.
  *
  */
 sealed trait VNode extends Keyable with Diffable {

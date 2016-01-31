@@ -9,7 +9,7 @@ lazy val commonSettings = Seq(
   version := "0.1.0",
   scalaVersion := "2.11.7")
 
-lazy val commonScalaJvmOptions = Seq("-Xlint", "-deprecation", "-Xfatal-warnings", "-feature")
+lazy val commonScalacOptions = Seq("-Xlint", "-deprecation", "-Xfatal-warnings", "-feature")
 
 
 lazy val root = (project in file(".")).
@@ -22,6 +22,7 @@ lazy val root = (project in file(".")).
 
 // crossProject is a Project builder, not a project unto itself
 lazy val vdom = crossProject.in(file(".")).
+	settings(scalacOptions ++= commonScalacOptions).
   settings(commonSettings: _*).
   settings(EclipseKeys.useProjectId := true).
 
@@ -29,7 +30,7 @@ lazy val vdom = crossProject.in(file(".")).
 	 "org.scalacheck" %% "scalacheck" % "latest.release" % "test")).
 
   jsSettings(
-	jsDependencies += RuntimeDOM,	
+	jsDependencies += RuntimeDOM % "test",	
     libraryDependencies ++= Seq("org.scala-js" %%% "scalajs-dom" % "latest.release", "org.scalatest" %%% "scalatest" % "3.0.0-M15" % "test"),
     persistLauncher := true,
     scalaJSStage in Global := FastOptStage

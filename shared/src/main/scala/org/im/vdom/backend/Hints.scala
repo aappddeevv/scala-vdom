@@ -18,9 +18,10 @@ package vdom
 package backend
 
 import scala.collection.immutable.BitSet
+import scala.language.implicitConversions
 
 /**
- * Basic hint structure for working with an element.
+ * Basic hint structure. Hints are encoded as bit flags..
  */
 trait Hints {
   /** Hint information for working with values */
@@ -35,6 +36,11 @@ case class AttrHint(
   /** Hints in bit form. */
   val values: BitSet) extends Hints
 
+/** Hints for working with styles. */
+case class StyleHint(
+  /** Hints in bit form */
+  val values: BitSet) extends Hints
+
 /**
  * Hints for Elements.
  */
@@ -46,7 +52,7 @@ case class ElHint(
  *  Some of these hints are only relevant with certain backends,
  *  such as the DOM backend e.g. MustUseProperty. Some, are
  *  related to multiple backends, such as HasPositiveNumericValue.
- *  
+ *
  *  Hints can be combined through '+'.
  */
 object Hints {
@@ -79,11 +85,53 @@ object Hints {
   val OmitClosingTag = BitSet(1)
   val NewlineEating = BitSet(2)
 
+  // Style hints
+  val Unitless = BitSet(1)
+
   /**
    * Empty hints with empty value hints.
    */
   val EmptyAttrHints = AttrHint(values = EmptyHints)
 }
+
+trait DOMStyleHints {
+  import Hints._
+
+  private val styleHints: Map[String, StyleHint] = Map(
+    "animationIterationCount" -> StyleHint(values = Unitless),
+    "boxFlex" -> StyleHint(values = Unitless),
+    "boxFlexGroup" -> StyleHint(values = Unitless),
+    "boxOrdinalGroup" -> StyleHint(values = Unitless),
+    "columnCount" -> StyleHint(values = Unitless),
+    "flex" -> StyleHint(values = Unitless),
+    "flexGrow" -> StyleHint(values = Unitless),
+    "flexPositive" -> StyleHint(values = Unitless),
+    "flexShrink" -> StyleHint(values = Unitless),
+    "flexNegative" -> StyleHint(values = Unitless),
+    "flexOrder" -> StyleHint(values = Unitless),
+    "gridRow" -> StyleHint(values = Unitless),
+    "gridColumn" -> StyleHint(values = Unitless),
+    "fontWeight" -> StyleHint(values = Unitless),
+    "lineClamp" -> StyleHint(values = Unitless),
+    "lineHeight" -> StyleHint(values = Unitless),
+    "opacity" -> StyleHint(values = Unitless),
+    "order" -> StyleHint(values = Unitless),
+    "orphans" -> StyleHint(values = Unitless),
+    "tabSize" -> StyleHint(values = Unitless),
+    "widows" -> StyleHint(values = Unitless),
+    "zIndex" -> StyleHint(values = Unitless),
+    "zoom" -> StyleHint(values = Unitless),
+
+    // SVG-related properties
+    "fillOpacity" -> StyleHint(values = Unitless),
+    "stopOpacity" -> StyleHint(values = Unitless),
+    "strokeDashoffset" -> StyleHint(values = Unitless),
+    "strokeOpacity" -> StyleHint(values = Unitless),
+    "strokeWidth" -> StyleHint(values = Unitless))
+
+  def hint(name: String) = styleHints.get(name)
+}
+private[backend] object DOMStyleHints extends DOMStyleHints
 
 trait DOMElHints {
   import Hints._

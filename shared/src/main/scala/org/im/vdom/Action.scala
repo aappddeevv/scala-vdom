@@ -75,7 +75,7 @@ sealed trait IOAction[+R] extends Debuggable {
     CleanUpAction[R](this, f, keepFailure, executor)
 
   /**
-   * Run an action after this action, whether this action succeeds or fails. If this
+   * Run an action after this action, regardless if this action succeeds or fails. If this
    * action fails, always propagate that failure. If this action succeeds and
    * the second action fails, return the second action's failure. This is much like
    * a 'try { ... } finally { ... }` clause.
@@ -90,7 +90,7 @@ sealed trait IOAction[+R] extends Debuggable {
   def failed: IOAction[Throwable] = FailedAction(this)
 
   /**
-   * Convert to a Try. Use cleanup and andFinally first.
+   * Convert to a Try. Use cleanup and andFinally before using asTry.
    */
   def asTry: IOAction[Try[R]] = AsTryAction[R](this)
 
@@ -113,7 +113,7 @@ object Action {
   /** Convert a `Future` to a [[IOAction]]. */
   def from[R](f: Future[R]): IOAction[R] = FutureAction[R](f)
 
-  /** Lift a constant value to a [[IOAction]]. */
+  /** Lift a constant value to a [[IOAction]]. This immediately evaluates the argument. Use lift to delay evaluation. */
   def successful[R](v: R): IOAction[R] = SuccessAction[R](v)
 
   /** Create a [[IOAction]] that always fails. */
@@ -145,7 +145,7 @@ object Action {
   def withContext[R, B <: Backend](f: B#Context => R) = ContextualAction(f)
   
   /**
-   * Lift a by-name value into an IOAction
+   * Lift a by-name value into an IOAction. This delays the computation until it is needed.
    */
   def lift[R, B <: Backend](f: => R) = ContextualAction(f)
 }

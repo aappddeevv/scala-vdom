@@ -25,14 +25,13 @@ import scala.util.control.NonFatal
  * to another object (the target) to make it look like another
  * (the source) object. The "difference" information must
  * be interpreted for each backend environment.
- * 
+ *
  * You can create patches either from diffing two virtual DOM
  * trees or you can just manually create the patches and compose
  * them using a sequence or `andThen` essentially creating a
  * patch stream or template language of DOM "updates."
- * 
- * It is quite passible that another layer of abstraction creates
- * patches directly as an intermediate "language."
+ *
+ * You can create your own DSL to create patches if you want.
  */
 sealed trait Patch {
   /**
@@ -44,7 +43,7 @@ sealed trait Patch {
    * Route this path to a specific child index when it is run.
    */
   def applyTo(path: Int) = PathPatch(this, Seq(path))
-  
+
   /**
    * Sequence a patch before another.
    */
@@ -95,4 +94,4 @@ case class AndThenPatch(left: Patch, right: Patch) extends Patch
  * then the moves. Duplicate indexes in any of these structures could
  * produce surprises.
  */
-case class ReorderInstruction(moves: Seq[(Int, Int)], removes: Seq[Int])
+case class ReorderInstruction(moves: Seq[(Int, Int)] = Seq(), removes: Seq[Int] = Seq())

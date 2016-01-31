@@ -18,6 +18,7 @@ package events
 
 import scalajs.js
 import org.scalajs.dom
+import scala.language.implicitConversions
 
 /**
  * When processing events using a Delegate, Matcher is used to determine if the
@@ -159,8 +160,8 @@ private[events] case class QualifiedHandler(handler: Handler, matcher: Matcher =
  * `delegate` is stuck in there for convienence.
  */
 trait Cancelable {
-  def cancel: Unit
-  def delegate: Delegate
+  def cancel(): Unit
+  def delegate(): Delegate
 }
 
 /**
@@ -350,14 +351,14 @@ case class Delegate(private[events] var root: Option[dom.EventTarget] = None,
     new Cancelable {
       private val _eventType = eventType
       private val _qhandler = qhandler
-      def cancel: Unit = {
+      def cancel(): Unit = {
         handlers.get(_eventType).foreach(_.remove(_qhandler))
         if (handlers.get(_eventType).map(_.size).getOrElse(0) > 0) {
           // no need to listen to this event type, no handlers
           root.foreach(_.removeEventListener(_eventType, self.handler _, capture))
         }
       }
-      def delegate = self
+      def delegate() = self
     }
   }
 }

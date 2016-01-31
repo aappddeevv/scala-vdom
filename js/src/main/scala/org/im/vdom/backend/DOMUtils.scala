@@ -27,7 +27,7 @@ import org.scalajs.dom
  */
 trait DOMUtils {
 
-  val doc = dom.document
+  private val doc = dom.document
 
   /**
    * Create a text node.
@@ -36,28 +36,31 @@ trait DOMUtils {
 
   /**
    * Create a DOM element using selected information from description.
+   * This function creates the element but does not perform any other
+   * initialization processing e.g. setting attributes.
    */
   def createEl(description: VirtualElementNode): dom.Element = {
     description.namespace.fold(doc.createElement(description.tag))(ns => doc.createElementNS(ns, description.tag))
   }
 
-  val (isWebKit, isFirefox, isTrident) = {
-    val uagent = dom.window.navigator.userAgent
-    (uagent.contains("WebKit"), uagent.contains("Firefox"),
-      uagent.indexOf("Trident"))
-  }
+  //  val (isWebKit, isFirefox, isTrident) = {
+  //    val uagent = dom.window.navigator.userAgent
+  //    (uagent.contains("WebKit"), uagent.contains("Firefox"),
+  //      uagent.indexOf("Trident"))
+  //  }
 
   val (normalizes, ignoresEmptyText) = {
-    var p: dom.Element = dom.document.createElement("p")
-    p.appendChild(dom.document.createTextNode("a"))
-    p.insertAdjacentHTML("beforeend", "b")
-    val normalizes = p.childNodes.length == 1
+    //    var p: dom.Element = dom.document.createElement("p")
+    //    p.appendChild(dom.document.createTextNode("a"))
+    //    p.insertAdjacentHTML("beforeend", "b")
+    //    val normalizes = p.childNodes.length == 1
 
-    p = dom.document.createElement("p")
-    p.appendChild(dom.document.createTextNode(""))
-    p.insertAdjacentHTML("beforeend", "<b>")
-    val ignoresEmptyText = p.firstChild.nodeType != 3
-    (normalizes, ignoresEmptyText)
+    //    var p = dom.document.createElement("p")
+    //    p.appendChild(dom.document.createTextNode(""))
+    //    p.insertAdjacentHTML("beforeend", "<b>")
+    //    val ignoresEmptyText = p.firstChild.nodeType != 3
+    //    (normalizes, ignoresEmptyText)
+    (true, true)
   }
 
   /**
@@ -67,7 +70,18 @@ trait DOMUtils {
   def has(node: dom.Node, property: String): Boolean =
     js.DynamicImplicits.truthValue(node.asInstanceOf[js.Dynamic](property).asInstanceOf[js.Dynamic])
 
+  /** Remove all children in the node. */
+  def removeChildren(node: dom.Node): dom.Node = {
+    import scala.scalajs.js.JSConverters._
+    assert(node != null)
+    for(i <- 0 until node.childNodes.length)
+      node.removeChild(node.childNodes(i))
+      node
+  }
+
 }
+
+object DOMUtils extends DOMUtils
 
 /**
  * Link VNodes and DOM Nodes. This can be implemented either in a global map
@@ -98,7 +112,7 @@ trait DOMInstanceMap {
    */
   def getVNode(dnode: dom.Node): Option[VNode] = {
     val x = dnode.asInstanceOf[js.Dynamic].__vnode
-    if(js.DynamicImplicits.truthValue(x)) Some(x.asInstanceOf[VNode])
+    if (js.DynamicImplicits.truthValue(x)) Some(x.asInstanceOf[VNode])
     None
   }
 

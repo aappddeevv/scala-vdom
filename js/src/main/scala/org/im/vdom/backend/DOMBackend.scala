@@ -24,6 +24,7 @@ import scala.scalajs.js
 import scala.scalajs.js._
 import scala.scalajs.js.UndefOr
 import scala.scalajs.js.UndefOr._
+import scala.language.implicitConversions
 
 import org.im.vdom._
 import org.scalajs.dom
@@ -41,7 +42,7 @@ import vdom.Defaults._
 trait AttributeComponent { self: DOMAttrHints with DelegateComponent with org.im.vdom.CleanupActions[dom.Node] =>
 
   /**
-   * Call `Element.setAttribute()` with an optional attribute.
+   * Call `Element.setAttribute()` with an optional namespace.
    */
   protected def setAttribute(el: dom.Element, name: String,
     value: String, namespace: Option[String] = None): Unit = {
@@ -73,10 +74,10 @@ trait AttributeComponent { self: DOMAttrHints with DelegateComponent with org.im
    *
    * An action is added to remove the Delegate as part of a cleanup activity.
    */
-  protected def handler(node: dom.Node, kv: KeyValue[FunctionValue]): Unit = {
+  protected def handler(node: dom.Node, key: FunctionKey, value: Option[FunctionValue]): Unit = {
     import events._
 
-    val name = kv.key.name
+    val name = key.name
 
     def addit(d: Delegate, v: FunctionValue) = {
       val cancelable = d.on(name, v.handler, v.matcher, v.useCapture)
@@ -90,7 +91,7 @@ trait AttributeComponent { self: DOMAttrHints with DelegateComponent with org.im
       cancelable
     }
 
-    kv.value.fold[Unit] {
+    value.fold[Unit] {
       getDelegate(node).fold() { d => d.off(Some(name)) }
     } { v =>
       getDelegate(node).fold {
@@ -107,24 +108,22 @@ trait AttributeComponent { self: DOMAttrHints with DelegateComponent with org.im
    */
   trait KeyValueAction extends (dom.Node => Unit)
 
-  /**
-   * Lift a `KeyValue` and return a `KeyValueAction` that is
-   * properly configured to be executed.
-   */
-
+  /** Lift KeyValue to KeyValueAction */
   implicit def toKeyValueAction(kv: KeyValue[_]): KeyValueAction = {
     kv match {
       case kv@KeyValue(AttrKey(_, _), _) => new KeyValueAction {
         def apply(target: dom.Node): Unit = attr(target, kv)
       }
       case kv@KeyValue(StyleKey(_), _) => new KeyValueAction {
-        def apply(target: dom.Node) = style(target, kv)
+        def apply(target: dom.Node): Unit = style(target, kv)
       }
-      case kv@KeyValue(FunctionKey(_), _) => new KeyValueAction {
-        def apply(target: dom.Node) = handler(target, kv.asInstanceOf[KeyValue[FunctionValue]])
+      case kv@KeyValue(key@FunctionKey(_), optv) => new KeyValueAction {
+        def apply(target: dom.Node): Unit = handler(target, key, optv.asInstanceOf[Option[FunctionValue]])
       }
+      case _ => throw new IllegalArgumentException("Unknown KeyValue KeyPart")
     }
   }
+
 }
 
 /**
@@ -139,37 +138,33 @@ trait DOMRendererComponent extends RendererComponent {
   type RenderOutput = dom.Node
 
   def render(vnode: VNode)(implicit executor: ExecutionContext): IOAction[RenderOutput] = {
-
     vnode match {
-      case v@VirtualText(content) => Action.successful(createText(content))
+      case v@VirtualText(content) => Action.lift { createText(content) }
+
       case v@VirtualElementNode(tag, attributes, children, key, namespace) =>
-        val newNode: UndefOr[dom.Element] = createEl(v)
-        newNode.foreach { newNode =>
-          // apply the properties
+        val makeEl: IOAction[dom.Node] = Action.lift {
+          val newNode = createEl(v)
           attributes.foreach(_(newNode))
-        }
-
-        // recurse and render the children, append to the new node!
-        val renderedAppendedChildren = children.map { childVNode =>
-          render(childVNode).map { renderedChild =>
-            for {
-              parent <- newNode
-            } yield parent.appendChild(renderedChild)
+          newNode
+        } flatMap { el =>
+          val childrenactions = children.map { child =>
+            val renderChildAction = render(child)
+            // a bit ugly since appendChild is really a side effoct
+            renderChildAction.map { c => el.appendChild(c); c }
           }
+          // the child render and append won't happen unless its exposed to be run later
+          Action.seq(childrenactions: _*) andThen Action.successful(el)
         }
-        // Sequenced so that append happens in the right order :-)
-        val t = run(Action.seq(renderedAppendedChildren: _*))
+        makeEl
 
-        // Ensure that the new node is returned from the render command
-        newNode.fold[IOAction[dom.Node]](Action.failed(new NoSuchElementException(s"Unable to create node with tag $tag")))(n =>
-          Action.from(t) andThen Action.successful(n))
-
-      /** Empty nodes become empty divs */
       case EmptyNode() =>
-        val emptyNode: UndefOr[dom.Element] = createEl(VNode.tag("div"))
-        emptyNode.fold[IOAction[dom.Node]](Action.failed(new NoSuchElementException(s"Unable to create node with tag div")))(n => Action.successful(n))
+        /** Empty nodes become empty divs */
+        Action.lift(createEl(VNode.tag("div")))
+
       case ThunkNode(f) => render(f())
-      case x@_ => Action.failed(new VDomException(s"Cannot render VNode type $x for $this"))
+
+      case CommentNode(c) =>
+        Action.lift(dom.document.createComment(c))
     }
   }
 }
@@ -402,7 +397,6 @@ trait DelegateComponent { self: org.im.vdom.CleanupActions[dom.Node] =>
   private def cleanupAction(node: dom.Node) = Action.lift { rmDelegate(node) }
 
 }
-
 
 /**
  * Cleanup actions specific to a DOM backend.

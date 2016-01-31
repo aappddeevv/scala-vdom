@@ -28,6 +28,7 @@ import dom._
 import org.scalajs.dom.document
 import org.im.vdom.backend.DOMBackend
 import UIEvents._
+import scala.language.postfixOps
 
 object Test extends JSApp {
 

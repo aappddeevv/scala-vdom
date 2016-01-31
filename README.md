@@ -134,9 +134,9 @@ code.
 
 ## Handling Events
 
-This is currently a gap in the library as I am still researching what to do for events. It 
-seems that attaching directly to a Dom object may be Ok but some virtual dom libraries
-attach to the top of the tree.
+Handling events smartly is currently a research issue. It seems that attaching
+directly to a DOM object may be Ok but some virtual dom libraries attach to the
+top of the tree and manage events throughout the tree.
 
 There are multiple ways to handle events.
 
