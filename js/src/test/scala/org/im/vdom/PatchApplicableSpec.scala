@@ -52,6 +52,19 @@ class PatchApplicableSpec extends AsyncFlatSpec
     }
   }
 
+  it should "insert a vnode at a specific position" in {
+    val body = DOMUtils.removeChildren(dom.document.body)
+    val node1 = dom.document.createElement("h1")
+    val node2 = dom.document.createElement("h2")
+    val vnode3 = tag("h3")
+    val node4 = dom.document.createElement("span")
+    Seq(node1, node2, node4).foreach(body.appendChild(_))
+    val x = DOMBackend.run(InsertPatch(vnode3, Some(2))(body))
+    x.map { el =>
+      body.childNodes(2).nodeName shouldEqual "H3"
+    }
+  }  
+  
   it should "add a 2 level div tree automatically" in {
     val body = dom.document.body
     DOMUtils.removeChildren(body)
@@ -96,18 +109,33 @@ class PatchApplicableSpec extends AsyncFlatSpec
 
   it should "reorder children correctly" in {
     val body = DOMUtils.removeChildren(dom.document.body)
-    val p = dom.document.createElement("p")
-    val h1 = dom.document.createElement("h1")
-    Seq(p, h1).foreach(body.appendChild(_))
-    body.childNodes(0).nodeName shouldEqual "P"
-    body.childNodes(1).nodeName shouldEqual "H1"
-    body.childNodes.length shouldEqual 2
+    val children = Seq("p", "h1", "h2", "span").map(dom.document.createElement(_))
+    val childrenNodeNames = children.map(_.nodeName)
+    children.foreach(body.appendChild(_))
+    (0 until body.childNodes.length).map(body.childNodes(_).nodeName) should contain theSameElementsInOrderAs childrenNodeNames
+    body.childNodes.length shouldEqual children.length
+
+    // Reorder only.
     val instr = ReorderInstruction(moves = Seq((0, 1), (1, 0)))
-    val x = DOMBackend.run(OrderChildrenPatch(instr)(body))
-    x.map { el =>
-      el.childNodes.length shouldEqual 2
-      el.childNodes(0).nodeName shouldEqual "H1"
-      el.childNodes(1).nodeName shouldEqual "P"
+    val x = DOMBackend.run(OrderChildrenPatch(instr)(body)) map { el =>
+      el.childNodes.length shouldEqual children.length
+      (0 until el.childNodes.length).map(el.childNodes(_).nodeName) should contain theSameElementsInOrderAs Seq("H1", "P", "H2", "SPAN")
     }
+    x
   }
+
+  it should "remove and reorder children correctly" in {
+    val body = DOMUtils.removeChildren(dom.document.body)
+    val children = Seq("p", "h1", "h2", "span").map(dom.document.createElement(_))
+    val childrenNodeNames = children.map(_.nodeName)
+    children.foreach(body.appendChild(_))
+
+    // Reorder and remove.
+    val instr2 = ReorderInstruction(moves = Seq((2, 1), (1, 2)), removes = Seq(0))
+    val y = DOMBackend.run(OrderChildrenPatch(instr2)(body)) map { el =>
+      el.childNodes.length shouldEqual (children.length - 1)
+      (0 until el.childNodes.length).map(el.childNodes(_).nodeName) should contain theSameElementsInOrderAs Seq("H1", "SPAN", "H2")
+    }
+    y
+  }  
 }

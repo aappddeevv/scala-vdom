@@ -74,9 +74,9 @@ trait DOMUtils {
   def removeChildren(node: dom.Node): dom.Node = {
     import scala.scalajs.js.JSConverters._
     assert(node != null)
-    for(i <- 0 until node.childNodes.length)
-      node.removeChild(node.childNodes(i))
-      node
+    for (i <- 0 until node.childNodes.length)
+      node.removeChild(node.childNodes(0))
+    node
   }
 
 }

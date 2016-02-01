@@ -92,6 +92,7 @@ case class AndThenPatch(left: Patch, right: Patch) extends Patch
 /**
  * Instruction to re-order children. Removes should be processed first
  * then the moves. Duplicate indexes in any of these structures could
- * produce surprises.
+ * produce surprises. Moves should reflect the removes that are 
+ * processed first.
  */
 case class ReorderInstruction(moves: Seq[(Int, Int)] = Seq(), removes: Seq[Int] = Seq())
