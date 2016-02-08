@@ -7,7 +7,12 @@ resolvers := allResolvers
 lazy val commonSettings = Seq(
   organization := "org.im.vdom",
   version := "0.1.0",
-  scalaVersion := "2.11.7")
+  scalaVersion := "2.11.7",
+  EclipseKeys.useProjectId := true,
+  EclipseKeys.withSource := true,
+  EclipseKeys.skipParents in ThisBuild := false,
+  EclipseKeys.createSrc := EclipseCreateSrc.Default + EclipseCreateSrc.Resource
+)
 
 lazy val commonScalacOptions = Seq("-Xlint", "-deprecation", "-Xfatal-warnings", "-feature")
 
@@ -16,7 +21,6 @@ lazy val root = (project in file(".")).
   aggregate(vdomJS, vdomJVM, component, reactive).
   settings(name := "scala-vdom").
   settings(
-    EclipseKeys.useProjectId := true,
     publish := {},
     publishLocal := {})
 
@@ -25,13 +29,14 @@ lazy val vdom = crossProject.in(file(".")).
 	settings(scalacOptions ++= commonScalacOptions).
   settings(commonSettings: _*).
   settings(EclipseKeys.useProjectId := true).
+  settings(libraryDependencies ++= Seq("org.scalatest" %%% "scalatest" % "3.0.0-M15" % "test")).
 
-  jvmSettings(libraryDependencies ++= Seq("org.scalatest" %%% "scalatest" % "3.0.0-M15" % "test",
-	 "org.scalacheck" %% "scalacheck" % "latest.release" % "test")).
+  jvmSettings(libraryDependencies ++= Seq("org.scalacheck" %% "scalacheck" % "1.12.5" % "test")).
 
   jsSettings(
+    relativeSourceMaps := true,
 	jsDependencies += RuntimeDOM % "test",	
-    libraryDependencies ++= Seq("org.scala-js" %%% "scalajs-dom" % "latest.release", "org.scalatest" %%% "scalatest" % "3.0.0-M15" % "test"),
+    libraryDependencies ++= Seq("org.scala-js" %%% "scalajs-dom" % "latest.release"),
     persistLauncher := true,
     scalaJSStage in Global := FastOptStage
   )

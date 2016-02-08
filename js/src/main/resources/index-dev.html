@@ -1,0 +1,139 @@
+<!-- 
+  Copyright 2015 Devon Miller
+ 
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+ 
+  http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License. 
+ -->
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>scalajs-vdom test page</title>
+
+<style>
+.surroundme {
+	background-color: lightgray;
+	color: blue;
+	border: 1px solid red;
+}
+
+.surroundme2 {
+	background-color: tan;
+	color: red;
+	border: 1px solid orange;
+}
+</style>
+
+</head>
+<body>
+	<table id="vdomtest">
+		<tr>
+			<td><p id="test1">test1</p></td>
+		</tr>
+		<tr>
+			<td><p id="test1_5"></p></td>
+		</tr>
+		<tr>
+			<td><div id="test2">test2: this line should remain and a
+					new node added</div></td>
+		</tr>
+		<tr>
+			<td><div id="test3">test3: the original test3 node was
+					replaced</div></td>
+		</tr>
+		<tr>
+			<td><div id="test4" class="surroundme">test4 this line
+					should remain and two new lines of content will be added with
+					different styling.</div></td>
+		</tr>
+		<tr>
+			<td><div id="test5_parent">
+					<p>
+						test5 - testing diff that inserts a new child then replaces the
+						child. If this line is all you see for test5, then the test
+						failed.<br> Below, you should see some test5 lines that
+						indicate success.
+					</p>
+					<div id="test5">/div></div></td>
+		</tr>
+
+		<tr>
+			<td><div id="test5a_paraent">
+					<div id="test5a">test5a - testing patching using patch paths</div>
+				</div>
+		</tr>
+
+		<tr>
+			<td><div id="test5b_parent">
+					<div id="test5b">test5b - testing patching using patch paths</div>
+				</div>
+		</tr>
+
+
+		<tr>
+			<td>
+				<div id="test6_parent"></div>
+				<p>test6 - testing diff when key says its the same VNode</p>
+				<div id="test6">You should not see this line. If you do its an
+					error.</div>
+			</td>
+		</tr>
+		<tr>
+			<td><div id="test7"></div></td>
+		</tr>
+
+		<tr>
+			<td><div id="test8_parent">test8 - add an SVG rect</div>
+				<div id="test8"></div></td>
+		</tr>
+
+		<tr>
+			<td><div id="test9">
+					test9:
+					<button id="test9button">Click Me!</button>
+					<br />Look at js console to see output.
+				</div></td>
+		</tr>
+
+		<tr>
+			<td><div id="test10">
+					test10:<br />
+					<div id="test10button"></div>
+				</div></td>
+		</tr>
+
+		<tr>
+			<td><div id="test11parent">
+					This tests some simple rendering using functional approaches<br>
+					<div id="test11"></div>
+				</div></td>
+	</table>
+
+	<div id="delegatestest">
+		<table>
+			<tr>
+				<td>
+					<div id="test200">
+						<input type="button" text="Click Me!"></input>
+					</div>
+				</td>
+			</tr>
+		</table>
+	</div>
+
+	<script type="text/javascript" src="../vdom-jsdeps.js"></script>
+	<script type="text/javascript"
+		src="../vdom-fastopt.js"></script>
+	<script type="text/javascript"
+		src="../vdom-launcher.js"></script>
+</body>
+</html>
