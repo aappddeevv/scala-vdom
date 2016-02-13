@@ -39,30 +39,20 @@ package object vdom {
    * Helpers for comparing Option values.
    */
   implicit class OptionOps[T](lhs: Option[T]) {
-    /**
-     * True if both are None or if they both have values and the values
-     * are the same. Otherwise, false.
-     */
-    def fuzzyEq(rhs: Option[T]) = (lhs, rhs) match {
-      case (None, None) => true
-      case (Some(l), Some(r)) => l == r
-      case _ => false
-    }
-
+    
     /**
      * rhs = None acts like a wildcard and matches anything
      * on lhs. But lhs = None only matches a rhs None.
      */
-    def wildcardEq(rhs: Option[T]) = (rhs, lhs) match {
+    def wildcardEq(rhs: Option[T]) = (lhs, rhs) match {
       case (None, None) => true
-      case (Some(l), Some(r)) => l == r
       case (None, _) => false
       case (_, None) => true
-      case _ => false
+      case (Some(l), Some(r)) => l == r
     }
 
     /**
-     * See `===`
+     * Negated `===`
      */
     def /==(rhs: Option[T]) = !(===(rhs))
     /**

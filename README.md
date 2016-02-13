@@ -1,7 +1,8 @@
 # scala-vdom
 
 scala-vdom is a simple virtual DOM written entirely in scala. It is based heavily on virtual-dom
- and other virtual DOM implementations.
+ and other virtual DOM implementations. The library is a low-level library and not intended to
+be used by web developers directly but to be used by other libraries.
 
 This library is currently a proof of concept. See [Issues](#issues).
 

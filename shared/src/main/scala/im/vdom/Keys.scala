@@ -30,7 +30,7 @@ trait KeyPart { self =>
  * Attribute that is part of an element.
  */
 case class AttrKey(val name: String, override val namespace: Option[String] = None) extends KeyPart { self =>
-  def :=[T](v: Option[T]): KeyValue[T] = KeyValue[T](self, v)
+  def :=[T](v: Option[T]): KeyValue[T] = KeyValue[T](this, v)
   def :=[T](v: T): KeyValue[T] = :=[T](Some(v))
 }
 
@@ -38,7 +38,7 @@ case class AttrKey(val name: String, override val namespace: Option[String] = No
  * Property that is part of a style.
  */
 case class StyleKey(val name: String) extends KeyPart { self =>
-  def :=[T](v: Option[T]): KeyValue[T] = KeyValue[T](self, v)
+  def :=[T](v: Option[T]): KeyValue[T] = KeyValue[T](this, v)
   def :=[T](v: T): KeyValue[T] = :=[T](Some(v))
 }
 
@@ -47,11 +47,10 @@ case class StyleKey(val name: String) extends KeyPart { self =>
  * that something should be unset or removed. What unset or remove
  * means is Backend dependent.
  *
- * The key is parameterized so we can pattern match off of it.
  */
 case class KeyValue[T](val key: KeyPart, val value: Option[T]) {
   /**
-   * Convenience function to unset or remove a value.
+   * Convenience function to create an unset KeyValue.
    */
   def unset = copy(value = None)
 }
@@ -65,35 +64,39 @@ class RichString(val name: String) {
   def style = StyleKey(name)
 }
 
-
 /**
  * The exception type in this system.
  */
 class VDomException(msg: String, parent: Throwable = null) extends RuntimeException(msg, parent)
 
 /**
- * Add a queue to an object for named cleanup IOActions. The actions can be
- * run by calling `cleanup`.
+ * Add a queue to an object for named IOAction lists. The actions can be
+ * run by calling `runActions`. Running actions should be considered a side effect.
+ * Once added, an IOAction cannot be removed from the list. The API clearly
+ * shows that the object implementing this trait is mutable.
  *
  */
-trait CleanupActions[T] {
+trait ActionLists[T] {
   /**
    * Add a cleanup action to run just before an attribute's value is set
    * to a new value. The specified actions are run after already registered actions.
    */
-  def addCleanupAction(keyName: String, node: T, action: IOAction[_]*): Unit
+  def addAction(keyName: String, node: T, action: IOAction[_]*): Unit
   /**
-   * Add a cleanup action to run after the Node is removed from the DOM.
+   * Add an action to run after the Node is detached from its document.
    * The specified actions are run after the already registered actions.
+   * Detaching should invoke hierarchical action running if T contains a hierarchy.
+   * Whether children action lists are run prior to the top nodes action list
+   * is implementation dependent.
    */
-  def addCleanupAction(node: T, action: IOAction[_]*): Unit
+  def addDetachAction(node: T, action: IOAction[_]*): Unit
   /**
-   * Run the cleanup actions for el and named. This is run automatically by the PatchesComponent
-   * at the right time of the lifecycle. Reset queues. The named queues are run first
-   * then the node level queue.
+   * Run the detach actions for el and named. The actions are run automatically by the PatchesComponent
+   * at the right time of the lifecycle. Reset all action lists. The named lists are run first
+   * then the node level queue. Cleanup should recurse through the children nodes as well.
    */
-  def cleanup(node: T): Unit
+  def runActions(node: T): Unit
 
   /** Run the cleanup actions for the named queue. */
-  def cleanup(name: String, node: T): Unit
+  def runActions(name: String, node: T): Unit
 }

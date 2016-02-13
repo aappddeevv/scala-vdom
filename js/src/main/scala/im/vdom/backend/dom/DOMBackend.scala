@@ -38,7 +38,7 @@ import Defaults._
  *
  * This layer does not automatically run named cleanup actions.
  */
-trait AttributeComponent { self: DOMAttrHints with DelegateComponent with CleanupActions[d.Node] =>
+trait AttributeComponent { self: DOMAttrHints with DelegateComponent with ActionLists[d.Node] =>
 
   /**
    * Call `Element.setAttribute()` with an optional namespace.
@@ -82,7 +82,7 @@ trait AttributeComponent { self: DOMAttrHints with DelegateComponent with Cleanu
       val cancelable = d.on(name, v.handler, v.matcher, v.useCapture)
       // When this attribute, reperesenting an event, is about to be reset,
       // remove this handler so its not registered twice.
-      addCleanupAction(name, node, Action.lift {
+      addAction(name, node, Action.lift {
         cancelable.cancel
         node
       })
@@ -91,11 +91,11 @@ trait AttributeComponent { self: DOMAttrHints with DelegateComponent with Cleanu
     }
 
     value.fold[Unit] {
-      getDelegate(node).fold() { d => d.off(Some(name)) }
+      getDelegate(node).fold() { d => d.off(Some(name)) } // turn off listening for "name" event
     } { v =>
       getDelegate(node).fold {
         val cancelable = addit(Delegate(), v) // create new Delegate
-        cancelable.delegate.root(Some(node))
+        cancelable.delegate.root(Some(node)) // set the node Delegate listens to
       } { delegate =>
         addit(delegate, v).delegate // use existing Delegate
       }
@@ -122,7 +122,6 @@ trait AttributeComponent { self: DOMAttrHints with DelegateComponent with Cleanu
       case _ => throw new IllegalArgumentException("Unknown KeyValue KeyPart")
     }
   }
-
 }
 
 /**
@@ -179,20 +178,20 @@ trait RenderToDOMComponent extends RendererComponent {
  * the linkage is not needed for those two areas.
  */
 trait DOMPatchesComponent extends PatchesComponent {
-  self: BasicDOMBackend with RenderToDOMComponent with AttributeComponent with CleanupActions[d.Node] =>
+  self: BasicDOMBackend with RenderToDOMComponent with AttributeComponent with ActionLists[d.Node] =>
 
   type PatchInput = d.Node
   type PatchOutput = d.Node
 
-  /** An action that unlinks a VNode from a d.Node. Runs cleanup actions. Returns d.Node. */
-  private def detach(node: d.Node): IOAction[PatchOutput] = Action.lift {
+  /** An action that unlinks a VNode from a d.Node. Runs cleanup actions. Returns the input d.Node. */
+  protected def detach(node: d.Node): IOAction[PatchOutput] = Action.lift {
     DOMEnvironment.unlink(node)
-    cleanup(node)
+    runActions(node)
     node
   }
 
   /** An action that adds a link between a VNode and d.Node. Returns d.Node. */
-  private def attach(vnode: VNode, dnode: d.Node): IOAction[PatchOutput] = Action.lift {
+  protected def attach(vnode: VNode, dnode: d.Node): IOAction[PatchOutput] = Action.lift {
     DOMEnvironment.link(vnode, dnode)
     dnode
   }
@@ -259,8 +258,8 @@ trait DOMPatchesComponent extends PatchesComponent {
         require(target != null)
         val ele = target.asInstanceOf[d.Element]
         keyValues.foreach { a =>
-          cleanup(a.key.name, target)
-          a(ele)
+          runActions(a.key.name, target) // run cleanup for that key
+          a(ele) // then apply the keyvalue to the element to add it back
         }
         Action.successful(target)
       }
@@ -354,7 +353,7 @@ trait DOMPatchesComponent extends PatchesComponent {
  * already, a property __delegate_cleanupaction property is set to true.
  *
  */
-trait DelegateComponent { self: CleanupActions[d.Node] =>
+trait DelegateComponent { self: ActionLists[d.Node] =>
   
   import events._
   import js.DynamicImplicits.truthValue
@@ -380,7 +379,7 @@ trait DelegateComponent { self: CleanupActions[d.Node] =>
     val dyndnode = dnode.asInstanceOf[js.Dynamic]
     dyndnode.__delegate = del.asInstanceOf[js.Any]
     if (!truthValue(dyndnode.__delegate_cleanupaction)) {
-      addCleanupAction(dnode, cleanupAction(dnode))
+      addDetachAction(dnode, cleanupAction(dnode))
       dyndnode.__delegate_cleanupaction = true
     }
   }
@@ -398,91 +397,6 @@ trait DelegateComponent { self: CleanupActions[d.Node] =>
   /** Create a cleanup IOAction that calls rmDelegate and returns the node. */
   private def cleanupAction(node: d.Node) = Action.lift { rmDelegate(node) }
 
-}
-
-/**
- * Cleanup actions specific to a DOM backend.
- *
- * Add a "queue" to DOM nodes for cleanup actions run when a DOM node is
- * disconnected from the virtual environment or an attribute's value is
- * about to be reset.
- *
- * Cleanup queues are available for the d.Node as well as each
- * attibute-named cleanup queues. An attribute's queue are
- * run before the attribute is set to a new value and then the attribute
- * cleanup queue is cleared.
- *
- * A node property called __namedCleanupActions is added to the DOM node.
- *
- * Cleanup queues can be used to disconnect event handlers or
- * manager external resources.
- *
- */
-trait DOMCleanupActions extends CleanupActions[d.Node] { self: DOMBackend =>
-  import js.DynamicImplicits.truthValue
-
-  val nodeCleanupQueueName = "__node__"
-
-  type NamedCleanupActions = Map[String, IOAction[_]]
-
-  /** Sets the action as the new named cleanup action. */
-  private[this] def setNamed(node: d.Node, namedActions: NamedCleanupActions): Unit =
-    node.asInstanceOf[js.Dynamic].__namedCleanupActions = namedActions.asInstanceOf[js.Any]
-
-  private[this] def getNamedQueues(node: d.Node): Option[NamedCleanupActions] = {
-    val x = node.asInstanceOf[js.Dynamic].__namedCleanupActions
-    if (truthValue(x)) Some(x.asInstanceOf[NamedCleanupActions])
-    else None
-  }
-
-  /**
-   * Add a cleanup action to run just before an attribute's value is set
-   * to a new value. The specified actions are run after already registered actions.
-   */
-  def addCleanupAction(keyName: String, node: d.Node, action: IOAction[_]*): Unit = {
-    val actions = Action.seq(action: _*)
-    val named = getNamedQueues(node).getOrElse(Map())
-    val existingAction = named.get(keyName).getOrElse(Action.successful(()))
-    val newAction = existingAction andThen actions
-    setNamed(node, named + (keyName -> newAction))
-  }
-
-  /**
-   * Add a cleanup action to run after the Node is removed from the DOM.
-   * The specified actions are run after the already registered actions.
-   */
-  def addCleanupAction(node: d.Node, action: IOAction[_]*): Unit = {
-    val latest = Action.seq(action: _*)
-    addCleanupAction(nodeCleanupQueueName, node, latest)
-  }
-
-  /**
-   * Run the cleanup actions for el and named. This is run automatically by the PatchesComponent
-   * at the right time of the lifecycle. Reset queues. The named queues are run first
-   * then the node level queue.
-   */
-  def cleanup(node: d.Node): Unit = {
-    getNamedQueues(node).fold() { _.values.foreach(run(_)) }
-    node.asInstanceOf[js.Dynamic].__namedCleanupActions = js.undefined.asInstanceOf[js.Any]
-  }
-
-  /** Run the cleanup actions for the named queue. */
-  def cleanup(name: String, node: d.Node): Unit = {
-    getNamedQueues(node).fold() { _.get(name).foreach(run(_)) }
-    // clear only that queue
-    getNamedQueues(node).foreach { a => setNamed(node, a - name) }
-  }
-
-  /**
-   * Create a `d.Node => IOAction[d.Node]` function that can be used to flatMap
-   * an existing IOAction. When run, it adds a cleanup method to the d.Node's cleanup queue.
-   * Returns the d.Node input.
-   */
-  private def cleanup(action: IOAction[_]*): (d.Node => IOAction[d.Node]) =
-    (node: d.Node) => Action.lift {
-      addCleanupAction(node, action: _*)
-      node
-    }
 }
 
 /**
@@ -506,7 +420,7 @@ trait DOMBackend extends BasicDOMBackend
   with DOMAttrHints
   with DOMCleanupActions
   with DelegateComponent
-  with CleanupActions[d.Node]
+  with ActionLists[d.Node]
 
 /**
  * Use this backend when a DOM patching process is desired.

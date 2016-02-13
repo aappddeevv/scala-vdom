@@ -197,7 +197,7 @@ object Test extends JSApp {
       // Add an artificial cleanup action to test cleanup actions being attached and called. 
       test5input.foreach { pnode =>
         val newNode = run(InsertPatch(vnodeA)(pnode))
-        newNode.foreach(addCleanupAction(_, Action.lift { println("Cleanup occurred!") }))
+        newNode.foreach(addDetachAction(_, Action.lift { println("Cleanup occurred!") }))
       }
     }
 

@@ -77,7 +77,7 @@ private[vdom] trait Diff {
    * The moves should operate after the removes on the original and adds on the
    * target have been factored out.
    *
-   * TODO: Find removes using some form of closeEnough
+   * TODO Redo the entire algorithm.
    */
   def diffSeq2(original: Seq[VNode], target: Seq[VNode], path: Seq[Int]): (Seq[(Int, Int)], Seq[Int], Seq[Int], Seq[Patch]) = {
     // Find removes
@@ -147,6 +147,12 @@ private[vdom] trait Diff {
 
     (moves, removedIndexes, addedIndexes, restdiff)
   }
+  
+  
+  
+  
+  
+  
 
   /**
    * Observes keyed VNodes and tries to identify moved nodes.

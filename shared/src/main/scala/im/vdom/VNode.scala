@@ -144,8 +144,8 @@ case class VirtualElementNode(val tag: String,
    */
   def closeTo(that: That, checkChildren: Boolean = false): Boolean = {
     val b = tag == that.tag &&
-      (key fuzzyEq that.key) &&
-      (namespace fuzzyEq that.namespace)
+      (key == that.key) &&
+      (namespace == that.namespace)
     if (checkChildren) b && (children.length == that.children.length)
     else b
   }

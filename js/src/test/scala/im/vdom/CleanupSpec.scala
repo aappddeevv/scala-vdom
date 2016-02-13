@@ -16,8 +16,7 @@
 package im
 package vdom
 
-
-import _root_.org.scalajs.{dom => d}
+import _root_.org.scalajs.{ dom => d }
 import scalajs.js
 
 import org.scalatest.FlatSpec
@@ -25,7 +24,7 @@ import org.scalatest.Matchers
 import org.scalatest.OptionValues
 
 /**
- * Test cleanup actions on DOM nodes.
+ * Test cleanup actions on DOM nodes and properties.
  */
 class CleanupSpec extends FlatSpec
     with Matchers
@@ -37,30 +36,47 @@ class CleanupSpec extends FlatSpec
 
   "cleanup component" should "attach a cleanup queue to a DOM node" in {
     val p = document.createElement("p")
-    DOMBackend.addCleanupAction(p, Action.successful(true))
+    DOMBackend.addDetachAction(p, Action.successful(true))
     truthValue(p.asInstanceOf[js.Dynamic].__namedCleanupActions) should be(true)
   }
 
   it should "run the node level cleanup action when asked to cleanup" in {
     val p = document.createElement("p")
     var counter = 0
-    DOMBackend.addCleanupAction(p, Action.lift {
+    DOMBackend.addDetachAction(p, Action.lift {
       counter += 1
     })
-    DOMBackend.cleanup(p)
+    DOMBackend.runActions(p)
     counter should be(1)
   }
 
   it should "allow a named cleanup queue to be created" in {
     val p = document.createElement("p")
     var counter = 0
-    DOMBackend.addCleanupAction("blah", p, Action.lift {
+    DOMBackend.addAction("blah", p, Action.lift {
       counter += 1
     })
     val t = p.asInstanceOf[js.Dynamic].__namedCleanupActions.asInstanceOf[Map[String, IOAction[_]]]
-    t.contains("blah") should be (true)
-    
-    DOMBackend.cleanup(p)
-    counter should be (1)    
+    t.contains("blah") should be(true)
+
+    DOMBackend.runActions(p)
+    counter should be(1)
   }
+
+  it should "process the hierachy of nodes and run all detach actions" in {
+    val div = document.createElement("div")
+    var counter = 0
+    DOMBackend.addDetachAction(div, Action.lift {
+      counter += 1
+    })
+    val div2 = document.createElement("p")
+    DOMBackend.addDetachAction(div2, Action.lift {
+      counter += 1
+    })
+    div.appendChild(div2)
+
+    DOMBackend.runActions(div)
+    counter should be (2)
+  }
+
 }
