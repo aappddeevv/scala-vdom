@@ -69,7 +69,9 @@ sealed trait IOAction[+R] extends Debuggable {
    * Run another action after this one that processes a potential failure. The cleanup
    * action is computed from the result of this action.  The cleanup argument is None
    * if this action succeeds or a Some containing this action's failure if it failed.
-   * @param keepFailure if the cleanup action fails, keep that failure info. Otherwise, keep the original failure.
+   * The default `keepFailure=true` says that this actions exception should be kept even if the cleanup's
+   * action throws an exception. If false, the exception from the cleanup action is kept.
+   * @param keepFailure if the cleanup action fails, keep that failure info if false. Otherwise, keep the original failure if true.
    */
   def cleanUp(f: Option[Throwable] => IOAction[_], keepFailure: Boolean = true)(implicit executor: ExecutionContext): IOAction[R] =
     CleanUpAction[R](this, f, keepFailure, executor)

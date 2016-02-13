@@ -19,7 +19,7 @@ package dom
 
 import scalajs.js
 import js.UndefOr
-import _root_.org.scalajs.{dom => d}
+import _root_.org.scalajs.{ dom => d }
 
 /**
  * Utilities to help smooth through the different ways DOM environments
@@ -76,10 +76,12 @@ trait DOMUtils {
 
   /** Remove all children in the node. */
   def removeChildren(node: d.Node): d.Node = {
-    import scala.scalajs.js.JSConverters._
     assert(node != null)
-    for (i <- 0 until node.childNodes.length)
-      node.removeChild(node.childNodes(0))
+    var last: d.Node = node.lastChild
+    while (last != null) {
+      node.removeChild(last)
+      last = node.lastChild
+    }
     node
   }
 
@@ -104,6 +106,23 @@ trait DOMUtils {
       t <- newRoot
     } yield parent.replaceChild(t, p)
   }
+
+  /**
+   * Find a node by navigating through the children based on the child indexes.
+   * Return None if no node is found, and hence, the path was not in alignment
+   * with the actual child structure.
+   */
+  def find(target: d.Node, path: Seq[Int]): Option[d.Node] = {
+    path match {
+      case Nil => Some(target)
+      case head :: tail =>
+        if (target.childNodes.length == 0 ||
+          head >= target.childNodes.length ||
+          target.childNodes(head) == null) return None
+        find(target.childNodes(head), path.drop(1))
+    }
+  }
+
 }
 
 object DOMUtils extends DOMUtils
