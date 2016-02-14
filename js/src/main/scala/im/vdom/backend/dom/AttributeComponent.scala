@@ -40,7 +40,7 @@ import im.vdom.AttrKey
  *
  * This layer does not automatically run named cleanup actions.
  */
-trait AttributeComponent { self: DOMAttrHints with DelegateComponent with ActionLists[d.Node] =>
+trait AttributeComponent { self: DOMHints with DelegateComponent with ActionLists[d.Node] =>
 
   /**
    * Call `Element.setAttribute()` with an optional namespace.
@@ -53,9 +53,9 @@ trait AttributeComponent { self: DOMAttrHints with DelegateComponent with Action
   protected def attr(node: d.Node, kv: KeyValue[_]): Unit = {
     val el = node.asInstanceOf[d.Element]
     val name = kv.key.name
-    val hints: AttrHint = hint(name).getOrElse(Hints.EmptyAttrHints)
+    val hints: AttrHint = attrHint(name).getOrElse(Hints.EmptyAttrHints)
     kv.value.fold(el.removeAttribute(name)) { v =>
-      if (!(hints.values & Hints.MustUseAttribute).isEmpty)
+      if (hints.values(Hints.MustUseAttribute))
         setAttribute(el, name, v.toString, kv.key.namespace)
       else
         el.asInstanceOf[js.Dynamic].updateDynamic(name)(v.asInstanceOf[js.Any])

@@ -37,7 +37,7 @@ private[backend] trait Adler32 {
   def checksumText(data: Traversable[Char]): Int
 }
 
-protected[backend] object DefaultAdler32 extends Adler32 {
+protected[backend] object Adler32 extends Adler32 {
 
   override def checksum(data: Traversable[Byte]): Int = {
     val result = data.foldLeft((1, 0)) { cumulated(_, _) }
@@ -49,7 +49,7 @@ protected[backend] object DefaultAdler32 extends Adler32 {
   }
 }
 
-protected[backend] object Utils {
+protected[backend] trait Utils {
 
   /** Attribute name for the checksum when placed in markup. */
   val CHECKSUM_ATTR_NAME = "data-vdom-checksum"
@@ -57,7 +57,7 @@ protected[backend] object Utils {
   /**
    * Return Adler32 checksum.
    */
-  def adler32(str: String): Int = DefaultAdler32.checksumText(str)
+  def adler32(str: String): Int = Adler32.checksumText(str)
 
   /** Append two strings */
   def stringAppend(left: String, right: String) = left + right
@@ -104,13 +104,16 @@ protected[backend] object Utils {
    * Check hint structure and apply business rule about whether this
    * value should be ignored and does not need to be set into a DOM object.
    */
-  def ignoreValue[T](key: KeyPart, hint: Option[AttrHint], value: T): Boolean = {
-    false
+  def ignoreValue[T](key: KeyPart, hintopt: Option[AttrHint], value: T): Boolean = {
+    (hintopt.map(_.values).getOrElse(Hints.EmptyHints), value) match {
+      case (hints, false) if (hints(Hints.HasBooleanValue)) => true
+      case _ => false
+    }
   }
 
   /**
-   * Create markup for a key value pair. It integrates in attribute
-   * hints and considers the value. This includes `key=value`.
+   * Create markup for a key value pair. It considers both the hint and the value
+   * when generating markup.
    *
    * If no hint is found, generate a simple `name = 'value'` and convert the
    * value to a quoted string. If the value is None then it
@@ -118,32 +121,72 @@ protected[backend] object Utils {
    *
    * @return None if no markup was generated or a string of markup.
    */
-  def createMarkupForProperty(kv: KeyValue[_]): Option[String] = {
-    val hintopt = DOMAttrHints.hint(kv.key.name)
+  def createMarkupForProperty(kv: KeyValue[_], hintopt: Option[AttrHint]): Option[String] = {
     kv.value.
-      filterNot(v => ignoreValue(kv.key, hintopt, v)).
-      map { v => kv.key.name + "=" + quoteValueForBrowser(v) }
+      filterNot(ignoreValue(kv.key, hintopt, _)).
+      map { v =>
+        (hintopt.map(_.values).getOrElse(Hints.EmptyHints), v) match {
+          case (hints, true) if (hints(Hints.HasBooleanValue) || hints(Hints.HasOverloadedBooleanValue)) =>
+            kv.key.name + """="""""
+          case _ => kv.key.name + "=" + quoteValueForBrowser(v)
+        }
+      }
   }
 
   /**
    * Take a style value and prepare it to be inserted into markup.
    */
-  def quoteStyleValueForBrowser[T](v: T) = v.toString.trim
-
-  /**
-   * Create style markup. This does NOT include `style=` or
-   * surrounding quotes. None values are not processed.
-   *
-   * @return None if no markup was generated or a string of markup.
-   */
-  def createMarkupForStyles(kvs: Seq[KeyValue[_]]): Option[String] = {
-    val rval = kvs.filter(_.value.isDefined).map { kv =>
-      kv.key.name + ":" + quoteStyleValueForBrowser(kv.value.get)
-    }.mkString(";")
-    rval match { 
-      case "" => None
-      case _ => Some(rval +";")
+  def quoteStyleValueForBrowser[T](hintopt: Option[StyleHint], v: T) = {
+    (hintopt.map(_.values).getOrElse(collection.BitSet.empty), v) match {
+      case (_, null) => ""
+      case (_, true) => ""
+      case (_, false) => ""
+      case (_, "") => ""
+      case (hints, x@_) if (hints(Hints.Unitless)) => v.toString
+      case _ => v.toString.trim + "px"
     }
   }
 
+  /** Convert camel cased to a hyphenated name. */
+  def hyphenate(name: String) = name.replaceAll("([A-Z])", "-$1").toLowerCase
+
+  /**
+   * Process a style name for proper formation. Hyphenate and fix
+   * some.
+   *
+   * For "ms-" prefix convert to "-ms-" per react.
+   */
+  def processStyleName(name: String) = {
+    hyphenate(name).trim.replaceAll("^ms-", "-ms-")
+  }
+
+  /**
+   * Create style markup. This does NOT include `style=` or
+   * surrounding quotes. None values conceptually indicate
+   * we should ignore the value so no markup is generated for
+   * keys with None values.
+   *
+   * @return None if no markup was generated or a string of markup.
+   * 
+   * TODO Allow the specification of a hint source.
+   */
+  def createMarkupForStyles(kv: KeyValue[_], hintopt: Option[StyleHint]): Option[String] =
+    kv.value.map { v => processStyleName(kv.key.name) + ":" + quoteStyleValueForBrowser(hintopt, v) }
+
+  /**
+   * Norm the string for comparison purposes. Remove repeated whitespace,
+   *  remove whitespace before non-alpha characters, remove leading/trailing
+   *  whitespace. Note that newlines are stripped as well and cannot
+   *  detect correctness if a newline MUST be in the normalized string.
+   */
+  def norm(input: String): String = {
+    input.trim().
+      replaceAll("(\\s)+", " ").
+      replaceAll("\\s(\\W)", "$1").
+      replaceAll("(\\W)\\s", "$1").
+      toUpperCase
+  }
+
 }
+
+protected[backend] object Utils extends Utils

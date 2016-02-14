@@ -52,6 +52,7 @@ trait HTML5Attributes {
   val cls = `class`
   var contentEditable = "contenteditable".attr
   val contextMenu = "contextmenu".attr
+  val disabled = "disabled".attr
   val dir = "dir".attr
   val hidden = "hidden".attr
   val href = "href".attr
@@ -122,6 +123,7 @@ object CustomHTML5Attributes extends CustomHTML5Attributes
  */
 object HTML5Attributes extends HTML5Attributes with CustomHTML5Attributes
 
+/** Attributes for SVG. */
 trait SVGAttributes {
   import Constants.NS._
   implicit class StandardStringToKey(name: String) extends RichString(name)
@@ -196,10 +198,14 @@ trait Styles {
   val height = "height".style
   val heightS = height
   val lineHeight = "lineHeight".style
+  val opacity = "opacity".style
+  val order = "order".style
   val stroke = "stroke".style
+  val tabSize = "tabSize".style
   val textAlign = "textAlign".style
   val width = "width".style
   val widthS = width
+  val zIndex = "zIndex".style
 }
 
 object Styles extends Styles

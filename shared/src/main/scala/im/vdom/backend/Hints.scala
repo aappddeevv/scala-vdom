@@ -21,7 +21,10 @@ import scala.collection.immutable.BitSet
 import scala.language._
 
 /**
- * Basic hint structure. Hints are encoded as bit flags..
+ * Basic hint structure. Hints are encoded as bit flags..Sub-classes
+ * are made for different hint usage types so that they can
+ * be customized with additional usage specific hint information.
+ * This is essentially like React's DOMProperty hint scaffolding.
  */
 trait Hints {
   /** Hint information for working with values */
@@ -29,23 +32,19 @@ trait Hints {
 }
 
 /**
- * Hints for working with elements and their properties/attributes. This
- * is essentially like React's DOMProperty injection concept.
+ * Hints for working with Elements
  */
 case class AttrHint(
-  /** Hints in bit form. */
   val values: BitSet) extends Hints
 
-/** Hints for working with styles. */
+/** Hints for Styles. */
 case class StyleHint(
-  /** Hints in bit form */
   val values: BitSet) extends Hints
 
 /**
  * Hints for Elements.
  */
 case class ElHint(
-  /** Hints in bit form. */
   val values: BitSet) extends Hints
 
 /**
@@ -67,26 +66,36 @@ object Hints {
   /** Empty hint set. */
   val EmptyHints = BitSet.empty
 
+  /** Convenience converter. */
+  implicit def toBitSet(i: Int) = BitSet(i)
+
   /** Should use set/get/remove*Property */
-  val MustUseAttribute = BitSet(1)
+  val MustUseAttribute = 1
 
   /** Must set value NOt using the attribute API */
-  val MustUseProperty = BitSet(1 << 2)
+  val MustUseProperty = 2
 
   /** Setting the value has side effects. */
-  val HasSideEffects = BitSet(1 << 3)
+  val HasSideEffects = 3
 
-  val HasBooleanValue = BitSet(1 << 4)
-  val HasNumericValue = BitSet(1 << 5)
-  val HasPositiveNumericValue = BitSet(1 << 6)
-  val HasOverloadedBooleanValue = BitSet(1 << 8)
+  /** Whether property should be removed when set to a falsy value. */
+  val HasBooleanValue = 4
+
+  /** Not sure what this means in react. */
+  val HasOverloadedBooleanValue = 5
+
+  /** Whether property must be numeric or parse as numeric and should be removed when set to a falsy value */
+  val HasNumericValue = 6
+
+  /** Numeric and positive. */
+  val HasPositiveNumericValue = 7
 
   // Element hints are separately enumerated from attribute hints.
-  val OmitClosingTag = BitSet(1)
-  val NewlineEating = BitSet(2)
+  val OmitClosingTag = 1
+  val NewlineEating = 2
 
   // Style hints
-  val Unitless = BitSet(1)
+  val Unitless = 1
 
   /**
    * Empty hints with empty value hints.
@@ -129,7 +138,7 @@ trait DOMStyleHints {
     "strokeOpacity" -> StyleHint(values = Unitless),
     "strokeWidth" -> StyleHint(values = Unitless))
 
-  def hint(name: String) = styleHints.get(name)
+  def styleHint(name: String) = styleHints.get(name)
 }
 protected[backend] object DOMStyleHints extends DOMStyleHints
 
@@ -156,7 +165,7 @@ trait DOMElHints {
     "wbr" -> ElHint(values = OmitClosingTag))
 
   /** Get a hint or None. */
-  def hint(name: String) = elHints.get(name)
+  def elHint(name: String) = elHints.get(name)
 }
 
 protected[backend] object DOMElHints extends DOMElHints
@@ -165,16 +174,30 @@ trait DOMAttrHints {
   import Hints._
   import Constants.NS._
 
+  private implicit def toAttrHint(i: Int) = AttrHint(values = BitSet(i))
+  
   private val attrHints: Map[String, AttrHint] = Map(
-    "checked" -> MustUseProperty,
-    "class" -> MustUseAttribute,
-    "height" -> MustUseAttribute,
-    "hidden" -> MustUseAttribute,
-    "id" -> MustUseProperty,
-    "selected" -> MustUseProperty,
-    "value" -> (MustUseProperty & HasSideEffects),
-    "width" -> MustUseAttribute)
-
+    "allowFullScreen" -> AttrHint(values = BitSet(HasBooleanValue) | BitSet(MustUseAttribute)),
+    "async" -> AttrHint(values = HasBooleanValue),
+    "autoPlay" -> AttrHint(values = HasBooleanValue),
+    "checked" -> AttrHint(values = BitSet(MustUseProperty) | BitSet(HasBooleanValue)),
+    "class" -> AttrHint(values = MustUseAttribute),
+    "disabled" -> AttrHint(values = BitSet(MustUseAttribute) | BitSet(HasBooleanValue)),
+    "download" -> AttrHint(values = HasOverloadedBooleanValue),
+    "formNoValidate" -> AttrHint(values = HasBooleanValue),
+    "hidden" -> AttrHint(values = BitSet(MustUseAttribute) | BitSet(HasBooleanValue)),
+    "height" -> AttrHint(MustUseAttribute),
+    "hidden" -> AttrHint(MustUseAttribute),
+    "id" -> AttrHint(MustUseProperty),
+    "readOnly" -> AttrHint(values = BitSet(MustUseProperty) | BitSet(HasBooleanValue)),
+    "required" -> AttrHint(values = HasBooleanValue),
+    "reversed" -> AttrHint(values = HasBooleanValue),
+    "scoped" -> AttrHint(values = HasBooleanValue),
+    "seamless" -> AttrHint(values = BitSet(MustUseAttribute) | BitSet(HasBooleanValue)),
+    "selected" -> AttrHint(values = BitSet(MustUseProperty) | BitSet(HasBooleanValue)),
+    "value" -> AttrHint(BitSet(MustUseProperty) | BitSet(HasSideEffects)),
+    "width" -> AttrHint(MustUseAttribute))
+    
   private val svgHints: Map[String, AttrHint] = Map(
     "clipPath" -> AttrHint(MustUseAttribute),
     "cx" -> MustUseAttribute,
@@ -232,8 +255,13 @@ trait DOMAttrHints {
     "y" -> MustUseAttribute)
 
   /** Get a hint or None. */
-  def hint(name: String) = attrHints.get(name) orElse svgHints.get(name)
+  def attrHint(name: String) = attrHints.get(name) orElse svgHints.get(name)
 
 }
 
 protected[backend] object DOMAttrHints extends DOMAttrHints
+
+/** All DOM related hints. */
+trait DOMHints extends DOMStyleHints with DOMElHints with DOMAttrHints
+
+ 

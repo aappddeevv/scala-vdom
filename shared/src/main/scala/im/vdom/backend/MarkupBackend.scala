@@ -21,12 +21,11 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
 
 /**
- * Render to markup. This is a WIP and the current markup output is not valid.
+ * Render to HTML strings.
  *
- * TODO: Make the markup correct :-)
  */
 trait MarkupRendererComponent extends RendererComponent {
-  self: Backend =>
+  self: Backend with DOMHints =>
 
   import Utils._
 
@@ -38,17 +37,24 @@ trait MarkupRendererComponent extends RendererComponent {
     vnode match {
       case v@VirtualText(content) =>
         Action.successful(content)
+
       case v@VirtualElementNode(tag, attributes, children, key, namespace) =>
 
         // find style "attributes", then add
-        val processStyles = Action.lift {
-          createMarkupForStyles(attributes.filter(keepStyles)).map("style=\"" + _ + "\"").getOrElse(" ")
+        val processStyles = Action.lift {          
+          val valstr = attributes.filter(keepStyles).map { kv =>
+            createMarkupForStyles(kv, styleHint(kv.key.name)).getOrElse("")
+          }.mkString(";")
+          valstr match { 
+            case "" => ""
+            case v => s"""style="$v;""""
+          }
         }
 
         // process remaining attributes
         val processAttributes = Action.lift {
-          attributes.filter(keepAttributes).map {
-            createMarkupForProperty(_).getOrElse("")
+          attributes.filter(keepAttributes).map { kv =>
+            createMarkupForProperty(kv, attrHint(kv.key.name)).getOrElse("")
           }.mkString(" ")
         }
 
@@ -57,10 +63,10 @@ trait MarkupRendererComponent extends RendererComponent {
           render(child)
         }, "") { stringAppend }
 
-        val elHint = DOMElHints.hint(tag)
+        val elHint = self.elHint(tag)
 
         // If omit closing tag, just close tag, don't generate middle content.
-        val middleEnd = elHint.filter(h => !(h.values & Hints.OmitClosingTag).isEmpty).fold {
+        val middleEnd = elHint.filter(h => h.values(Hints.OmitClosingTag)).fold {
           Seq(Action.successful(">"),
             childMarkup,
             Action.successful("</" + tag + ">"))
@@ -82,7 +88,7 @@ trait MarkupRendererComponent extends RendererComponent {
   }
 }
 
-trait MarkupBackend extends Backend with MarkupRendererComponent {
+trait MarkupBackend extends Backend with MarkupRendererComponent with DOMHints {
   type This = MarkupBackend
   type Context = BasicContext
 

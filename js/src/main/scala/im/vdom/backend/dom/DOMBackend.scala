@@ -49,7 +49,7 @@ trait DOMBackend extends BasicDOMBackend
   with DOMPatchesComponent
   with RenderToDOMComponent 
   with AttributeComponent
-  with DOMAttrHints
+  with DOMHints
   with DOMCleanupActions
   with DelegateComponent
   with ActionLists[d.Node]

@@ -16,7 +16,7 @@
 package im
 package vdom
 
-import _root_.org.scalajs.{ dom => d }
+//import _root_.org.scalajs.{ dom => d }
 
 import org.scalatest.FlatSpec
 import org.scalatest.Matchers
