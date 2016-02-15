@@ -51,13 +51,25 @@ protected[backend] object Adler32 extends Adler32 {
 
 protected[backend] trait Utils {
 
-  /** Attribute name for the checksum when placed in markup. */
-  val CHECKSUM_ATTR_NAME = "data-vdom-checksum"
-
   /**
    * Return Adler32 checksum.
    */
   def adler32(str: String): Int = Adler32.checksumText(str)
+
+  /**
+   * Name of the custom data attribute that stores a checksum.
+   */
+  val ChecksumAttrName = "data-scala-vdom-checksum"
+
+  /**
+   * Add checksum to end of markup using complete adhoc string regex
+   * to find the end tag. Assumes the first set of characters
+   * is the start of an element and the tag ends in ">" or "/>".
+   */
+  def addChecksumToMarkup(markup: String): String = {
+    val checksum = adler32(markup)
+    markup.replaceFirst("(/?>)", " " + ChecksumAttrName + "=\"" + checksum + "\"$1")
+  }
 
   /** Append two strings */
   def stringAppend(left: String, right: String) = left + right
@@ -167,7 +179,7 @@ protected[backend] trait Utils {
    * keys with None values.
    *
    * @return None if no markup was generated or a string of markup.
-   * 
+   *
    * TODO Allow the specification of a hint source.
    */
   def createMarkupForStyles(kv: KeyValue[_], hintopt: Option[StyleHint]): Option[String] =

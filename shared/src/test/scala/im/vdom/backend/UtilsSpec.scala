@@ -31,6 +31,7 @@ class UtilsSpec extends FlatSpec with Matchers with OptionValues {
 
   import Utils._
   import collection.immutable.BitSet
+import im.vdom.backend.Hints;
 
   "norm" should "should not change an already normed string" in {
     norm("<div><div>") should equal ("<DIV><DIV>")
@@ -100,4 +101,15 @@ class UtilsSpec extends FlatSpec with Matchers with OptionValues {
     quoteStyleValueForBrowser(None, "200") should equal ("200px")
   }
   
+  "adler32" should "calculate a checksum" in { 
+    val checksum = adler32("<div>blah is cool</div>")
+    //println(s"$checksum")
+    checksum should be (1628178442)
+  }
+  
+  it should "add it to markup correctly" in { 
+    val markup= addChecksumToMarkup("<div>blah is cool</div>")
+    markup should equal ("""<div data-scala-vdom-checksum="1628178442">blah is cool</div>""")
+  }
+ 
 }

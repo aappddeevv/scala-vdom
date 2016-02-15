@@ -74,7 +74,7 @@ trait DOMUtils {
   def has(node: d.Node, property: String): Boolean =
     js.DynamicImplicits.truthValue(node.asInstanceOf[js.Dynamic](property).asInstanceOf[js.Dynamic])
 
-  /** Remove all children in the node. */
+  /** Remove all children from the node. */
   def removeChildren(node: d.Node): d.Node = {
     assert(node != null)
     var last: d.Node = node.lastChild
@@ -122,6 +122,22 @@ trait DOMUtils {
         find(target.childNodes(head), path.drop(1))
     }
   }
+
+  import util.control.Exception
+
+  /**
+   * If the element has a custom data attribute storing the checksum and its value
+   * matches the calculated checksum on the markup input, return true. Otherwise,
+   * return false.
+   */
+  def canReuseMarkup(markup: String, n: d.Element) =
+    n.getAttribute(Utils.ChecksumAttrName) match {
+      case checksumstr: String =>
+        val checksum = Exception.catching(classOf[NumberFormatException]) opt (checksumstr.toInt) getOrElse (-1)
+        if (checksum == Utils.adler32(markup)) true
+        else false
+      case null => false
+    }
 
 }
 

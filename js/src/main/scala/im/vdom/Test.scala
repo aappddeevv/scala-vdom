@@ -409,6 +409,16 @@ object Test extends JSApp {
     val data = Seq("one", "two", "three", "four")
     def renderList(data: Seq[String]) = data.map(c => tag("li", text(c)))
     run(InsertPatch(tag("ul", renderList(data): _*))(target11))
+
+    val rendertest1 = document.getElementById("rendertest1")
+    val rt1vnode = tag("div",
+      tag("p", text("Test creating markup from vnodes - you should see an unnumbered list with 3 items")),
+      tag("ul",
+        tag("li", tag("i", text("bullet 1"))),
+        tag("li", tag("em", text("bullet 2"))),
+        tag("li", tag("b", text("bullet 3")))))
+    run(InsertPatch(rt1vnode)(rendertest1))
+
   }
 
 }
