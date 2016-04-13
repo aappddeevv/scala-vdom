@@ -26,7 +26,10 @@ lazy val vdom = crossProject.in(file(".")).
   settings(commonSettings: _*).
   settings(libraryDependencies ++= Seq("org.scalatest" %%% "scalatest" % "3.0.0-M15" % "test")).
 
-  jvmSettings(libraryDependencies ++= Seq("org.scalacheck" %% "scalacheck" % "1.12.5" % "test")).
+  jvmSettings(libraryDependencies ++= Seq(
+    "org.scala-lang.modules" %% "scala-xml" % "1.0.5" % "compile",
+    "org.scalacheck" %% "scalacheck" % "1.12.5" % "test"
+  )).
 
   jsSettings(
     relativeSourceMaps := true,
