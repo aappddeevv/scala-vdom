@@ -22,7 +22,7 @@ class ScalaXmlSpec extends WordSpec {
 
     "convert a Node with text" in {
       val html = <span>This is text</span>
-      val expected = tag("span", Seq(), text("This is text"))
+      val expected = tag("span", text("This is text"))
 
       assertResult(expected)(nodeToVNode(html))
     }
@@ -38,7 +38,7 @@ class ScalaXmlSpec extends WordSpec {
 
       val expected =
         tag("form", Seq(KeyValue(AttrKey("method"), Some("post"))),
-          tag("div", Seq(),
+          tag("div",
             tag("input", Seq(KeyValue(AttrKey("type"), Some("text")), KeyValue(AttrKey("id"), Some("chat-in")), KeyValue(AttrKey("name"), Some("in")))),
             tag("input", Seq(KeyValue(AttrKey("type"), Some("submit")), KeyValue(AttrKey("value"), Some("Submit"))))
           )
