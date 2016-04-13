@@ -6,7 +6,7 @@ resolvers := allResolvers
 
 lazy val commonSettings = Seq(
   organization := "org.im.vdom",
-  version := "0.1.0",
+  version := "0.1.1-SNAPSHOT",
   scalaVersion := "2.11.7"
 )
 
