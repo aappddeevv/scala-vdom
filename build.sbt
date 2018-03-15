@@ -6,12 +6,8 @@ resolvers := allResolvers
 
 lazy val commonSettings = Seq(
   organization := "org.im.vdom",
-  version := "0.1.0",
-  scalaVersion := "2.11.7",
-  EclipseKeys.useProjectId := true,
-  EclipseKeys.withSource := true,
-  EclipseKeys.skipParents in ThisBuild := false,
-  EclipseKeys.createSrc := EclipseCreateSrc.Default + EclipseCreateSrc.Resource
+  version := "0.1.1-SNAPSHOT",
+  scalaVersion := "2.11.7"
 )
 
 lazy val commonScalacOptions = Seq("-Xlint", "-deprecation", "-Xfatal-warnings", "-feature")
@@ -28,10 +24,12 @@ lazy val root = (project in file(".")).
 lazy val vdom = crossProject.in(file(".")).
 	settings(scalacOptions ++= commonScalacOptions).
   settings(commonSettings: _*).
-  settings(EclipseKeys.useProjectId := true).
   settings(libraryDependencies ++= Seq("org.scalatest" %%% "scalatest" % "3.0.0-M15" % "test")).
 
-  jvmSettings(libraryDependencies ++= Seq("org.scalacheck" %% "scalacheck" % "1.12.5" % "test")).
+  jvmSettings(libraryDependencies ++= Seq(
+    "org.scala-lang.modules" %% "scala-xml" % "1.0.5" % "compile",
+    "org.scalacheck" %% "scalacheck" % "1.12.5" % "test"
+  )).
 
   jsSettings(
     relativeSourceMaps := true,
