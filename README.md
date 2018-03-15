@@ -33,14 +33,14 @@ of actions to apply to the DOM then apply them all at once.
 a patch and create a side-effecting action specific to a UI environment. It also
 knows how to run an IOAction.
 
-The layers have been created to allow scala-vdom to execute efficienly in multiple 
+The layers have been created to allow scala-vdom to execute efficiently in multiple 
 environments. scala-vdom was designed to run on clients and servers in both scalajs
 and non-scalajs environments. Most of the core layers create immutable objects that
 are Backend independent or at least highly decoupled from a Backend.
 
 To create the layers, a slick-like Backend was created. The Backend "lifts" the Patch
 and VNode objects into it using implicits and transforms those fairly simple objects
-into executable actions. This design approach makes extensions more difficult to make
+into executable actions. This design approach makes extensions more difficult to implement
 but it reduces the burden on the programmer by providing a much simpler set of classes
 and type signatures to build on.
 
@@ -52,7 +52,7 @@ VNode trees can be created in multiple ways:
 
 * Creating the VNode tree using a function you define. The function may use
 application specific logic to customize the VDom tree to reflect changes in application state.
-* Creating a singe VNode tree then using a lens (shapeless, scalaz, monacle) to mutate
+* Creating a single VNode tree then using a lens (shapeless, scalaz, monacle) to mutate
 the tree.
 * Using a more friendly API such as scalatags. Scalatags needs to be configured to
 generate VDom objects instead of text or DOM objects.
